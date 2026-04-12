@@ -1,0 +1,18 @@
+{
+  "model": "nlpopt",
+  "batch_size": 40,
+  "epochs": 500,
+  "print_every": 10,
+  "learning_rate": 0.001,
+  "alpha_consistency": 10.0,
+  "train_frac": 0.8,
+  "val_frac": 0.2,
+  "hidden_size": 64,
+  "hidden_dim": 2,
+  "cp_iters": 500,
+  "cp_tol": 1e-09,
+  "seed": 42,
+  "dtype": "float64",
+  "device": "auto",
+  "jit_warmup": true
+}

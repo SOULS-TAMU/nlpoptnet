@@ -1,0 +1,15 @@
+{
+  "type": "qcqp",
+  "p": 10,
+  "n": 100,
+  "me": 50,
+  "mi": 50,
+  "num_samples": 100,
+  "seed": 42,
+  "solver": "GUROBI",
+  "is_diag_Q": false,
+  "bound_radius": 2.0,
+  "force_regenerate": false,
+  "x_L": [-10.0],
+  "x_U": [10.0]
+}

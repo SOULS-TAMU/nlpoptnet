@@ -1,0 +1,173 @@
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, Mapping, Tuple
+
+import numpy as np
+
+from scripts.misc.optimizer_profile import enrich_optimizer_generation_metadata
+from scripts.misc.solver_config import resolve_solver_name
+
+_SUPPORTED_PROBLEM_TYPES = {"qp", "qcqp"}
+_TYPE_ALIASES = {
+    "convex_qp_jaxmodel": "qp",
+    "convex_qcqp_jaxmodel": "qcqp",
+}
+
+
+def normalize_problem_type(problem_type: str) -> str:
+    normalized = str(problem_type).strip().lower()
+    normalized = _TYPE_ALIASES.get(normalized, normalized)
+    if normalized not in _SUPPORTED_PROBLEM_TYPES:
+        raise ValueError(
+            f"Unsupported problem type '{problem_type}'. "
+            f"Supported types: {', '.join(sorted(_SUPPORTED_PROBLEM_TYPES))}."
+        )
+    return normalized
+
+SCHEMA_VERSION = 8
+
+
+@dataclass(frozen=True)
+class DatasetBundle:
+    dataset_dir: Path
+    dataset_id: str
+    generated: bool
+    X: np.ndarray
+    Y: np.ndarray
+    Mu: np.ndarray
+    metadata: Dict[str, Any]
+
+
+def _canonical_data_cfg(data_cfg: Mapping[str, Any]) -> Dict[str, Any]:
+    canonical = dict(data_cfg)
+    canonical["type"] = normalize_problem_type(str(data_cfg["type"]))
+    canonical["schema_version"] = SCHEMA_VERSION
+    canonical["p"] = int(data_cfg["p"])
+    canonical["n"] = int(data_cfg["n"])
+    canonical["me"] = int(data_cfg["me"])
+    canonical["mi"] = int(data_cfg["mi"])
+    canonical["num_samples"] = int(data_cfg["num_samples"])
+    canonical["seed"] = int(data_cfg["seed"])
+    canonical["x_L"] = [float(v) for v in data_cfg["x_L"]]
+    canonical["x_U"] = [float(v) for v in data_cfg["x_U"]]
+    canonical["is_diag_Q"] = bool(data_cfg.get("is_diag_Q", False))
+    canonical["solver"] = resolve_solver_name(data_cfg, default="SCS")
+    canonical["bound_radius"] = float(data_cfg.get("bound_radius", 2.0))
+    canonical["convex_generator_version"] = 8 if canonical["type"] == "qcqp" else 4
+    return canonical
+
+
+def _dataset_hash(data_cfg: Mapping[str, Any]) -> str:
+    payload = json.dumps(_canonical_data_cfg(data_cfg), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+
+
+def build_dataset_id(data_cfg: Mapping[str, Any]) -> str:
+    canonical = _canonical_data_cfg(data_cfg)
+    stem = (
+        f"{canonical['type']}_p{canonical['p']}_n{canonical['n']}"
+        f"_me{canonical['me']}_mi{canonical['mi']}"
+        f"_ns{canonical['num_samples']}_seed{canonical['seed']}"
+    )
+    return f"{stem}_{_dataset_hash(canonical)}"
+
+
+def dataset_dir(case_dir: Path, data_cfg: Mapping[str, Any]) -> Path:
+    canonical = _canonical_data_cfg(data_cfg)
+    problem_data_root = os.environ.get("NLP_OPT_PROBLEM_DATA_ROOT")
+    base_root = Path(problem_data_root) if problem_data_root else (case_dir / "problem_data")
+    return base_root / canonical["type"] / build_dataset_id(canonical)
+
+
+def _paths(base: Path) -> Dict[str, Path]:
+    return {
+        "arrays": base / "dataset.npz",
+        "parameters_csv": base / "parameters.csv",
+        "variables_csv": base / "variables.csv",
+        "ineq_multipliers_csv": base / "ineq_multipliers.csv",
+        "metadata": base / "metadata.json",
+        "data_config": base / "data_config.json",
+    }
+
+
+def dataset_exists(base: Path) -> bool:
+    paths = _paths(base)
+    return all(path.exists() for path in paths.values())
+
+
+def _write_csv(path: Path, arr: np.ndarray) -> None:
+    with open(path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerows(arr.tolist())
+
+
+def save_dataset(
+    base: Path,
+    *,
+    data_cfg: Mapping[str, Any],
+    X: np.ndarray,
+    Y: np.ndarray,
+    Mu: np.ndarray,
+    metadata: Mapping[str, Any],
+) -> Dict[str, Any]:
+    base.mkdir(parents=True, exist_ok=True)
+    paths = _paths(base)
+    np.savez(paths["arrays"], X=X, Y=Y, Mu=Mu)
+    _write_csv(paths["parameters_csv"], X)
+    _write_csv(paths["variables_csv"], Y)
+    _write_csv(paths["ineq_multipliers_csv"], Mu)
+    with open(paths["data_config"], "w") as fh:
+        json.dump(_canonical_data_cfg(data_cfg), fh, indent=2, sort_keys=True)
+    enriched_metadata = enrich_optimizer_generation_metadata(
+        metadata,
+        num_points=int(np.asarray(X).shape[0]),
+        artifact_paths=(
+            paths["arrays"],
+            paths["parameters_csv"],
+            paths["variables_csv"],
+            paths["ineq_multipliers_csv"],
+            paths["data_config"],
+        ),
+    )
+    with open(paths["metadata"], "w") as fh:
+        json.dump(enriched_metadata, fh, indent=2, sort_keys=True)
+    return enriched_metadata
+
+
+def load_dataset(base: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, Any]]:
+    paths = _paths(base)
+    arrays = np.load(paths["arrays"])
+    with open(paths["metadata"], "r") as fh:
+        metadata = json.load(fh)
+    return np.asarray(arrays["X"]), np.asarray(arrays["Y"]), np.asarray(arrays["Mu"]), metadata
+
+
+def ensure_cached_dataset(
+    case_dir: Path,
+    data_cfg: Mapping[str, Any],
+    generate_fn: Callable[[], Tuple],
+    *,
+    force: bool = False,
+) -> DatasetBundle:
+    base = dataset_dir(case_dir, data_cfg)
+    dataset_id = build_dataset_id(data_cfg)
+    if dataset_exists(base) and not force:
+        X, Y, Mu, metadata = load_dataset(base)
+        return DatasetBundle(dataset_dir=base, dataset_id=dataset_id, generated=False, X=X, Y=Y, Mu=Mu, metadata=metadata)
+
+    generated = generate_fn()
+    if len(generated) == 3:
+        X, Y, metadata = generated
+        Mu = np.zeros((int(np.asarray(X).shape[0]), 0), dtype=np.float64)
+    elif len(generated) == 4:
+        X, Y, Mu, metadata = generated
+    else:
+        raise ValueError("Dataset generator must return (X, Y, metadata) or (X, Y, Mu, metadata).")
+    metadata = save_dataset(base, data_cfg=data_cfg, X=X, Y=Y, Mu=Mu, metadata=metadata)
+    return DatasetBundle(dataset_dir=base, dataset_id=dataset_id, generated=True, X=X, Y=Y, Mu=Mu, metadata=dict(metadata))

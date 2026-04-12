@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local run artifacts
+case/general/README_tmp.html
+case/**/problem_data/
+case/**/runs/
+case/general_simple/
+notebooks/_runs/
+_smoke/
+
+# Packaging artifacts
+nlpopt/build/*
+!nlpopt/build/.gitkeep
+nlpopt/src/*.egg-info/
+*.egg-info/
+dist/
+
+# Local environments
+.venv/
+env/

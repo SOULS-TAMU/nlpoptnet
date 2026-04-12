@@ -1,0 +1,13 @@
+{
+  "cp_mode": "fixed",
+  "stepsize": "auto",
+  "backprop_mode": "implicit",
+  "safety": 0.95,
+  "knorm_iters": 25,
+  "knorm_seed": 42,
+  "adjoint_iters": 25,
+  "k_layer": 5,
+  "converge_criterion_primal_dual": true,
+  "use_ruiz": true,
+  "ruiz_iters": 10
+}
