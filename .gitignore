@@ -23,3 +23,10 @@ dist/
 # Local environments
 .venv/
 env/
+
+# Run slurm files:
+job.slurm
+Improved_KKT.ipynb
+setup.sh
+run.sh
+

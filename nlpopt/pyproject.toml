@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlpopt"
-version = "0.1.0"
+version = "0.1.1"
 description = "A low-level JAX modeling environment for parametric nonlinear optimization"
 readme = "README.md"
 requires-python = ">=3.9"

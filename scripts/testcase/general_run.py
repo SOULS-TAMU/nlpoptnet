@@ -39,6 +39,7 @@ from scripts.misc.nlpopt_prediction_export import export_ordered_projected_predi
 from scripts.misc.optimizer_profile import enrich_optimizer_generation_metadata  # noqa: E402
 from scripts.misc.runtime import resolve_dtype, runtime_summary, select_device  # noqa: E402
 from scripts.misc.training_timing import should_track_epoch, summarize_timing_profile, timing_window_label  # noqa: E402
+from scripts.misc.console_format import fmt_dec, fmt_pct, fmt_sci, fmt_sec  # noqa: E402
 from scripts.plot_utils.plotting import (  # noqa: E402
     save_objective_value_violation_plot,
 )
@@ -107,12 +108,13 @@ def _print_multiplier_activity_summary(summary: dict | None) -> None:
     if not summary or int(summary.get("total_entries", 0)) <= 0:
         return
     print("=== Multiplier activity summary (optimizer active if mu > 1e-6) ===")
-    print(f"Optimizer active fraction: {float(summary['optimizer_active_fraction']):.6f}")
+    print(f"Optimizer active fraction: {fmt_dec(summary['optimizer_active_fraction'])}")
     print(
         "Predicted mu mean on optimizer-active/inactive: "
-        f"{summary['predicted_mean_on_optimizer_active']} / {summary['predicted_mean_on_optimizer_inactive']}"
+        f"{fmt_dec(summary['predicted_mean_on_optimizer_active'])} / "
+        f"{fmt_dec(summary['predicted_mean_on_optimizer_inactive'])}"
     )
-    print(f"Activity agreement @1e-6: {summary['activity_agreement_rate_at_tol']}")
+    print(f"Activity agreement @1e-6: {fmt_dec(summary['activity_agreement_rate_at_tol'])}")
     print("")
 
 
@@ -574,10 +576,10 @@ def _run_nlpopt(
         if (ep % print_every) == 0 or ep == cfg.epochs - 1:
             print(
                 f"ep {ep:05d} | "
-                f"train loss {float(tr_m['loss']):.6e} obj {float(tr_m['obj']):.6e} "
-                f"cons {_consistency(tr_m):.6e} viol {train_viol_max:.6e} || "
-                f"val loss {float(va_m['loss']):.6e} obj {float(va_m['obj']):.6e} "
-                f"cons {_consistency(va_m):.6e} viol {val_viol_max:.6e}"
+                f"train loss {fmt_sci(tr_m['loss'])} obj {fmt_sci(tr_m['obj'])} "
+                f"cons {fmt_sci(_consistency(tr_m))} viol {fmt_sci(train_viol_max)} || "
+                f"val loss {fmt_sci(va_m['loss'])} obj {fmt_sci(va_m['obj'])} "
+                f"cons {fmt_sci(_consistency(va_m))} viol {fmt_sci(val_viol_max)}"
             )
     training_wall_time = time.perf_counter() - train_wall_t0
 
@@ -595,12 +597,12 @@ def _run_nlpopt(
     consistency_value = float((_consistency(tr_m) * train_batches.shape[0] + _consistency(va_m) * val_batches.shape[0]) / total_batches)
 
     print("\n=== Constraint violation (max over train+val) ===")
-    print(f"Equality   ||A y - (b+Bx)||_inf : {eq_max:.6e}")
-    print(f"Inequality max(·,0)_inf         : {ineq_max:.6e}")
-    print(f"Bounds     max(lb,ub)_inf       : {bnd_max:.6e}\n")
+    print(f"Equality   ||A y - (b+Bx)||_inf : {fmt_sci(eq_max)}")
+    print(f"Inequality max(·,0)_inf         : {fmt_sci(ineq_max)}")
+    print(f"Bounds     max(lb,ub)_inf       : {fmt_sci(bnd_max)}\n")
     print("=== Training evaluation ===")
-    print(f"Projected objective: {objective_value:.6e}")
-    print(f"Consistency term  : {consistency_value:.6e}\n")
+    print(f"Projected objective: {fmt_sci(objective_value)}")
+    print(f"Consistency term  : {fmt_sci(consistency_value)}\n")
 
     @jax.jit
     def backbone_forward_fn(params, x_batch):
@@ -691,24 +693,24 @@ def _run_nlpopt(
     timing_summary = summarize_timing_profile(timing_profile)
 
     print("=== Profiled training time distribution ===")
-    print(f"Training wall time: {training_wall_time:.3f}s")
+    print(f"Training wall time: {fmt_sec(training_wall_time)}")
     print(
         f"Average epoch time ({timing_window_label(cfg.epochs)}): "
-        f"train {float(timing_summary['avg_train_epoch_time_sec']):.3f}s "
-        f"val {float(timing_summary['avg_val_epoch_time_sec']):.3f}s "
-        f"total {float(timing_summary['avg_total_epoch_time_sec']):.3f}s"
+        f"train {fmt_sec(timing_summary['avg_train_epoch_time_sec'])} "
+        f"val {fmt_sec(timing_summary['avg_val_epoch_time_sec'])} "
+        f"total {fmt_sec(timing_summary['avg_total_epoch_time_sec'])}"
     )
     print(
         f"Average batch time ({timing_window_label(cfg.epochs)}): "
-        f"train {float(timing_summary['avg_train_batch_time_sec']):.4f}s "
-        f"val {float(timing_summary['avg_val_batch_time_sec']):.4f}s "
-        f"overall {float(timing_summary['avg_total_batch_time_sec']):.4f}s"
+        f"train {fmt_sec(timing_summary['avg_train_batch_time_sec'])} "
+        f"val {fmt_sec(timing_summary['avg_val_batch_time_sec'])} "
+        f"overall {fmt_sec(timing_summary['avg_total_batch_time_sec'])}"
     )
     if float(timing_summary["backbone_total_sec"]) + float(timing_summary["projection_total_sec"]) + float(timing_summary["backward_total_sec"]) + float(timing_summary["optimizer_total_sec"]) > 0.0:
-        print(f"Backbone forward : {float(timing_summary['time_backbone_percent']):6.2f}% (train + val)")
-        print(f"Projection       : {float(timing_summary['time_projection_percent']):6.2f}% (train + val)")
-        print(f"Backward         : {float(timing_summary['time_backward_percent']):6.2f}% (train only)")
-        print(f"Optimizer update : {float(timing_summary['time_optimizer_percent']):6.2f}% (train only)")
+        print(f"Backbone forward : {fmt_pct(timing_summary['time_backbone_percent'])} (train + val)")
+        print(f"Projection       : {fmt_pct(timing_summary['time_projection_percent'])} (train + val)")
+        print(f"Backward         : {fmt_pct(timing_summary['time_backward_percent'])} (train only)")
+        print(f"Optimizer update : {fmt_pct(timing_summary['time_optimizer_percent'])} (train only)")
     print("")
 
     dataset_root = dataset_dir(case_dir, data_cfg, model_def_path)
