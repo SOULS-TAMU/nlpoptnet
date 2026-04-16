@@ -86,6 +86,25 @@ Simple builder-defined general problem:
 python run_general.py --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5
 ```
 
+## Data Generation
+
+To generate notebook-ready data artifacts for `qp`, `qcqp`, `nlp`, or
+`nonconvex`, run:
+
+```bash
+python generate_data.py --type qp --dimension p=2,n=4,me=1,mi=1 --data_json case/qp/data.json
+```
+
+The script writes:
+
+- `notebooks/data/<problem_type>/parameters.csv`
+- `notebooks/data/<problem_type>/variables.csv`
+- `notebooks/data/<problem_type>/problem.npz`
+
+It also saves the resolved generation config to
+`notebooks/data/<problem_type>/data.json`. In `problem.npz`, `M[0]` is `x_L`
+and `M[1]` is `x_U`.
+
 ## Problem Definition
 
 Structured QP/QCQP/NLP/nonconvex problems are configured under `case/<type>/`.

@@ -1,10 +1,10 @@
 {
   "type": "qcqp",
-  "p": 10,
+  "p": 50,
   "n": 100,
   "me": 50,
   "mi": 50,
-  "num_samples": 100,
+  "num_samples": 1000,
   "seed": 42,
   "solver": "GUROBI",
   "is_diag_Q": false,
