@@ -1,121 +1,109 @@
 # NLPOptNet
 
-NLPOptNet trains a JAX-based optimization surrogate with a differentiable
-projection layer for parametric constrained optimization problems.
+`NLPOptNet` is a JAX-based package for learning optimization mappings with a
+projection layer. The repo now focuses on the optimization model code itself:
+users provide `parameters.csv` or a bounded parameter region, then define the
+objective and constraints with the `NLPOptNet` API.
 
-The codespace is run-only: `main.py` supports the NLPOptNet model for one
-problem configuration at a time.
+The installable package lives in [`nlpoptnet/`](./nlpoptnet). Example
+workflows live in [`notebooks/`](./notebooks), and the API notes are in
+[`docs/`](./docs).
 
 ## Install
 
+For local development from this repo:
+
 ```bash
 python -m pip install --upgrade pip
-python nlpopt/install_info.py
-pip install -e nlpopt
+pip install -e nlpoptnet
 ```
 
-See [docs/INSTALL.md](docs/INSTALL.md) for Windows, macOS, Linux, CPU, and GPU
-setup notes.
-
-## Runner
+For a published release:
 
 ```bash
-python main.py --type <problem> --action run [options]
+pip install nlpoptnet
 ```
 
-Supported problem types:
+See [docs/INSTALL.md](./docs/INSTALL.md) for Python version notes and local
+setup details.
 
-- `qp`
-- `qcqp`
-- `nlp`
-- `nonconvex`
-- `general`
+## Quick Start
 
-Arguments:
+```python
+from nlpoptnet import NLPOptNet
 
-- `--type`: problem family.
-- `--action`: only `run` is supported.
-- `--p`: override parameter dimension `p` or `n_x`.
-- `--n`: override decision dimension `n` or `n_y`.
-- `--me`: override equality count `me` or `n_eq`.
-- `--mi`: override inequality count `mi` or `n_ineq`.
-- `--samples`: override generated sample count.
-- `--epochs`: override training epochs.
-- `--batch_size`: override training batch size.
-- `--learning_rate`: override optimizer learning rate.
-- `--train_frac`: override train split fraction.
-- `--seed`: override data and training seed.
-- `--solver`: override optimizer/data-generation solver.
-- `--output_dir`: write run artifacts to a specific directory.
+CONFIG = {
+    "epochs": 1000,
+    "batch_size": 32,
+    "learning_rate": 1e-3,
+    "train_frac": 0.8,
+    "hidden_size": 64,
+    "hidden_layers": 2,
+    "seed": 42,
+    "dtype": "float64",
+}
 
-## Examples
+model = NLPOptNet(config=CONFIG, type="qp", name="demo_qp")
+x = model.add_parameter(["x1", "x2"])
+y = model.add_variable(["y1", "y2", "y3", "y4"])
 
-QP:
-
-```bash
-python main.py --type qp --action run --p 2 --n 4 --me 1 --mi 1 --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5 --solver OSQP
+model.extract("notebooks/data/qp/problem.npz")
+model.objective(0.5 * model.quad(model.Q, y) + model.lin(model.c, y))
+model.constraints.equality.add(
+    model.lin(model.A, y) == model.b + model.lin(model.B, x),
+)
+model.constraints.inequality.add(
+    model.lin(model.C, y) <= model.d + model.lin(model.D, x),
+)
+model.constraints.box.add(
+    var=y,
+    lower=model.l + model.lin(model.L, x),
+    upper=model.u + model.lin(model.U, x),
+)
+model.dataset(parameters="notebooks/data/qp/parameters.csv")
+model.build()
+result = model.optimize()
+run_dir = result["output_dir"]
 ```
 
-QCQP:
+Each optimization run writes a timestamped output directory in the working
+directory:
 
-```bash
-python main.py --type qcqp --action run --p 2 --n 4 --me 1 --mi 1 --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5 --solver SCS
+```text
+<model_name>_<timestamp>/
 ```
 
-NLP:
+That directory includes `metadata.json`, `model_weights.npz`,
+`predicted_variables.csv`, `parameters.csv`, and the saved problem constants
+needed for `model.load(...)` and `model.predict(...)`.
 
-```bash
-python main.py --type nlp --action run --p 2 --n 4 --me 1 --mi 1 --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5 --solver SCS
+## Core Ideas
+
+- `NLPOptNet(config=..., type=...)` is the user-facing entry point.
+- `model.extract(problem.npz)` loads structured matrices and exposes them as
+  model attributes like `model.Q`, `model.A`, `model.b`, and so on.
+- `model.dataset(...)`, `model.simplex(...)`, and `model.box(...)` define the
+  parameter region.
+- `model.constraints.box.add(...)` is separate from general inequalities so the
+  bound constraints stay on the dedicated projection path.
+- `model.optimize()` trains and returns a result dictionary with `output_dir`,
+  `metadata_path`, `summary`, and `history`.
+- `model.load(metadata_path)` restores a trained model, and
+  `model.predict(x_value)` returns projected variable predictions.
+
+## Repository Layout
+
+```text
+docs/
+nlpoptnet/
+notebooks/
+.gitignore
+README.md
 ```
 
-Nonconvex:
+## Documentation
 
-```bash
-python main.py --type nonconvex --action run --p 1 --n 3 --me 1 --mi 1 --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5
-```
-
-General block problem from `case/general/model_definition.py`:
-
-```bash
-python main.py --type general --action run --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5
-```
-
-Simple builder-defined general problem:
-
-```bash
-python run_general.py --samples 12 --epochs 3 --batch_size 4 --train_frac 0.5
-```
-
-## Data Generation
-
-To generate notebook-ready data artifacts for `qp`, `qcqp`, `nlp`, or
-`nonconvex`, run:
-
-```bash
-python generate_data.py --type qp --dimension p=2,n=4,me=1,mi=1 --data_json case/qp/data.json
-```
-
-The script writes:
-
-- `notebooks/data/<problem_type>/parameters.csv`
-- `notebooks/data/<problem_type>/variables.csv`
-- `notebooks/data/<problem_type>/problem.npz`
-
-It also saves the resolved generation config to
-`notebooks/data/<problem_type>/data.json`. In `problem.npz`, `M[0]` is `x_L`
-and `M[1]` is `x_U`.
-
-## Problem Definition
-
-Structured QP/QCQP/NLP/nonconvex problems are configured under `case/<type>/`.
-
-General block problems are defined in `case/general/model_definition.py`.
-Simple general problems can be defined directly in `run_general.py` with
-`nlpopt.ProblemBuilder`.
-
-See [docs/PROBLEM.md](docs/PROBLEM.md) for details.
-
-## Notebooks
-
-Example notebooks are in `notebooks/`. They are intentionally small and write
-local notebook artifacts under `notebooks/_runs/`.
+- [docs/INSTALL.md](./docs/INSTALL.md)
+- [docs/PROBLEM.md](./docs/PROBLEM.md)
+- [docs/PUBLISH.md](./docs/PUBLISH.md)
+- [docs/VERSION.md](./docs/VERSION.md)
