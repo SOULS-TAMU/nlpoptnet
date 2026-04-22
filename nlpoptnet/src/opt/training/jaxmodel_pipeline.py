@@ -163,13 +163,18 @@ def build_train_fns_from_jaxmodel(
         )
         obj = jnp.mean(obj_fn(x_batch, y_tilde))
         eq_penalty = jnp.asarray(0.0, dtype=model_def.dtype)
+        eq_violation = jnp.asarray(0.0, dtype=model_def.dtype)
         if me > 0:
             eq_resid = eq_resid_fn(x_batch, y_tilde)
             eq_penalty = jnp.mean(jnp.square(jnp.sum(lam_tilde * eq_resid, axis=1)))
+            eq_violation = jnp.mean(jnp.abs(eq_resid))
         ineq_penalty = jnp.asarray(0.0, dtype=model_def.dtype)
+        ineq_violation = jnp.asarray(0.0, dtype=model_def.dtype)
         if mi > 0:
             ineq_resid = ineq_resid_fn(x_batch, y_tilde)
-            ineq_penalty = jnp.mean(jnp.sum(mu_tilde * jnp.maximum(ineq_resid, 0.0), axis=1))
+            ineq_pos = jnp.maximum(ineq_resid, 0.0)
+            ineq_penalty = jnp.mean(jnp.sum(mu_tilde * ineq_pos, axis=1))
+            ineq_violation = jnp.mean(ineq_pos)
         mse_y = jnp.mean((y_hat - y_tilde) ** 2)
         mse_lam = jnp.mean((lam_hat - lam_tilde) ** 2) if me > 0 else jnp.asarray(0.0, dtype=model_def.dtype)
         mse_mu = jnp.mean((mu_hat - mu_tilde) ** 2) if mi > 0 else jnp.asarray(0.0, dtype=model_def.dtype)
@@ -178,6 +183,9 @@ def build_train_fns_from_jaxmodel(
         metrics = {
             "loss": total,
             "obj": obj,
+            "consistency": cons,
+            "eq_violation": eq_violation,
+            "ineq_violation": ineq_violation,
             "eq_penalty": eq_penalty,
             "ineq_penalty": ineq_penalty,
             "mse_y": mse_y,

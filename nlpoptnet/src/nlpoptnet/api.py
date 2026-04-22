@@ -8,13 +8,20 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable
+from datetime import datetime
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
 from jaxmodel import HighLevelNLPBuilder
+from opt.aot_artifacts import (
+    backbone_forward_numpy,
+    load_backbone_npz,
+    save_backbone_npz,
+)
 from opt.models.backbone import Backbone
+from opt.native_projection import NativeProjection, compile_native_projection
 from opt.training import (
     apply_projection_layers,
     build_epoch_fns,
@@ -39,35 +46,32 @@ from .utils import json_safe, resolve_dtype, resolve_path, timestamp, write_json
 jax.config.update("jax_enable_x64", True)
 
 
-_METRIC_KEYS = ("loss", "obj", "mse_y", "mse_lam", "mse_mu")
+_METRIC_KEYS = ("loss", "obj", "consistency", "eq_violation", "ineq_violation", "mse_y", "mse_lam", "mse_mu")
 _TYPE_ALIASES = {"nonconvx": "nonconvex"}
+_REQUIRED_CONFIG_KEYS = ("epochs", "batch_size", "learning_rate", "hidden_size", "hidden_layers")
 _DEFAULT_CONFIG = {
-    "epochs": 20,
-    "batch_size": 32,
-    "learning_rate": 1e-3,
     "train_frac": 0.8,
-    "hidden_size": 64,
-    "hidden_layers": 2,
     "seed": 42,
-    "dtype": "float64",
-    "print_every": 10,
-    "verbose": True,
-    "alpha_consistency": 1.0,
-    "cp_iters": 5000,
-    "cp_tol": 1e-6,
-    "IS_FIXED": True,
-    "stepsize": "auto",
-    "safety": 0.90,
-    "knorm_iters": 20,
+    "alpha_consistency": 10.0,
+    "cp_mode": "fixed",
+    "cp_iters": 500,
+    "cp_tol": 1e-9,
+    "safety": 0.95,
+    "knorm_iters": 25,
     "knorm_seed": 42,
-    "adjoint_iters": 50,
-    "use_ruiz": True,
-    "ruiz_iters": 4,
+    "adjoint_iters": 25,
     "k_layer": 1,
+    "use_ruiz": True,
+    "ruiz_iters": 10,
+    "dtype": "float64",
+    "print_every": 50,
     "device": "auto",
+    "verbose": True,
+    "stepsize": "auto",
     "jit_warmup": True,
     "num_samples": 1000,
     "y_bound": 10.0,
+    "native_projection": True,
 }
 
 
@@ -76,6 +80,26 @@ def _normalize_problem_type(problem_type: str | None) -> str | None:
         return None
     normalized = _TYPE_ALIASES.get(str(problem_type).strip().lower(), str(problem_type).strip().lower())
     return normalized
+
+
+def _normalize_cp_mode(value: Any) -> str:
+    mode = str(value).strip().lower()
+    if mode not in {"fixed", "accelerated"}:
+        raise ValueError("cp_mode must be either 'fixed' or 'accelerated'.")
+    return mode
+
+
+def _apply_config_aliases(config: dict[str, Any]) -> None:
+    if "cp_mode" in config:
+        mode = _normalize_cp_mode(config["cp_mode"])
+        config["cp_mode"] = mode
+        config["IS_FIXED"] = mode == "fixed"
+    elif "IS_FIXED" in config:
+        config["IS_FIXED"] = bool(config["IS_FIXED"])
+        config["cp_mode"] = "fixed" if bool(config["IS_FIXED"]) else "accelerated"
+    else:
+        config["cp_mode"] = "fixed"
+        config["IS_FIXED"] = True
 
 
 def _coerce_names(names: str | Iterable[str]) -> list[str]:
@@ -93,6 +117,22 @@ def _coerce_names(names: str | Iterable[str]) -> list[str]:
 def _metrics_tuple_to_dict(values) -> dict[str, float]:
     return {key: float(value) for key, value in zip(_METRIC_KEYS, values)}
 
+
+def _fmt_metric(x,COL_W=12):
+    return f"{x:>{COL_W}.4e}"
+
+
+def _fmt_summary_value(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, (float, np.floating)):
+        return f"{float(value):.6g}"
+    return str(value)
+
+def _fmt_time_sec(value):
+    if value is None:
+        return "N/A"
+    return f"{value * 1000:.2f} ms"
 
 def _block_until_ready(tree):
     return jax.tree_util.tree_map(
@@ -197,6 +237,8 @@ class _InferenceState:
     sub_layer: Callable
     n_x: int
     output_dir: str | None
+    native_projection: Any | None = None
+    native_backbone: dict[str, Any] | None = None
 
 
 class Expression:
@@ -655,6 +697,7 @@ class NLPOptNet:
         self.config = copy.deepcopy(_DEFAULT_CONFIG)
         if config is not None:
             self.config.update(copy.deepcopy(dict(config)))
+        _apply_config_aliases(self.config)
 
         self.parameter_names: list[str] = []
         self.variable_names: list[str] = []
@@ -925,6 +968,14 @@ class NLPOptNet:
             raise ValueError("Add at least one parameter.")
         if not self.variable_names:
             raise ValueError("Add at least one variable.")
+        missing_config = [key for key in _REQUIRED_CONFIG_KEYS if key not in self.config or self.config[key] is None]
+        if missing_config:
+            raise ValueError(
+                "Missing required config values: "
+                + ", ".join(missing_config)
+                + ". Required values are epochs, batch_size, learning_rate, hidden_size, and hidden_layers."
+            )
+        _apply_config_aliases(self.config)
 
         n_x = len(self.parameter_names)
         n_y = len(self.variable_names)
@@ -1037,7 +1088,9 @@ class NLPOptNet:
             objective_fn=make_batched_objective(model),
             sub_layer=make_subproblem_layer_from_model(model),
         )
-        return self
+        if bool(self.config.get("verbose", True)):
+            print("🤖 Model build successfully!")
+        return None
 
     def optimize(self) -> dict[str, Any]:
         if self._build_state is None:
@@ -1048,6 +1101,20 @@ class NLPOptNet:
         state = build_state.init_state_fn()
         history: list[dict[str, Any]] = []
         start = time.perf_counter()
+        if bool(self.config.get("verbose", True)):
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"▶️ Model training started! [{now}]\n")
+            COL_W = 12
+
+            print("=" * 120)
+            print(f"{'Epoch':>{COL_W}} | {'Training':^{COL_W*4+3}} | {'Validation':^{COL_W*4+3}}")
+            print("-" * 120)
+            print(
+                f"{'':>{COL_W}} | "
+                f"{'Loss':>{COL_W}} {'Obj':>{COL_W}} {'Eq':>{COL_W}} {'Ineq':>{COL_W}} | "
+                f"{'Loss':>{COL_W}} {'Obj':>{COL_W}} {'Eq':>{COL_W}} {'Ineq':>{COL_W}}"
+            )
+            print("=" * 120)
 
         for epoch in range(1, int(build_state.cfg.epochs) + 1):
             state, train_tuple = build_state.train_epoch_fn(state, build_state.train_batches)
@@ -1060,6 +1127,12 @@ class NLPOptNet:
                 "val_loss": val_metrics["loss"],
                 "train_objective": train_metrics["obj"],
                 "val_objective": val_metrics["obj"],
+                "train_consistency": train_metrics["consistency"],
+                "val_consistency": val_metrics["consistency"],
+                "train_eq_violation": train_metrics["eq_violation"],
+                "val_eq_violation": val_metrics["eq_violation"],
+                "train_ineq_violation": train_metrics["ineq_violation"],
+                "val_ineq_violation": val_metrics["ineq_violation"],
                 "train_mse_y": train_metrics["mse_y"],
                 "val_mse_y": val_metrics["mse_y"],
                 "train_mse_lam": train_metrics["mse_lam"],
@@ -1074,14 +1147,29 @@ class NLPOptNet:
                 or epoch % max(1, int(self.config.get("print_every", 10))) == 0
             ):
                 print(
-                    f"[{epoch:04d}/{int(build_state.cfg.epochs):04d}] "
-                    f"train_loss={record['train_loss']:.6e} "
-                    f"val_loss={record['val_loss']:.6e} "
-                    f"train_obj={record['train_objective']:.6e} "
-                    f"val_obj={record['val_objective']:.6e}"
+                    f"{f'{epoch:03d}/{int(build_state.cfg.epochs):03d}':>{COL_W}} | "
+                    f"{_fmt_metric(record['train_loss'])} "
+                    f"{_fmt_metric(record['train_objective'])} "
+                    f"{_fmt_metric(record['train_eq_violation'])} "
+                    f"{_fmt_metric(record['train_ineq_violation'])} | "
+                    f"{_fmt_metric(record['val_loss'])} "
+                    f"{_fmt_metric(record['val_objective'])} "
+                    f"{_fmt_metric(record['val_eq_violation'])} "
+                    f"{_fmt_metric(record['val_ineq_violation'])}"
                 )
-
+        if bool(self.config.get("verbose", True)):
+            print("=" * 120)
+            print("\n")
         training_wall_time = time.perf_counter() - start
+        if bool(self.config.get("verbose", True)):
+            print(f"⏱️ Model training time (wall time) = {training_wall_time:.4f} seconds")
+            print("✅ Model training finished!")
+            print("💾 Model saved!")
+            if bool(self.config.get("verbose", True)):
+                # print("📦 Collecting summary...")
+                print("📦 Postprocessing...")
+                print("Meanwhile you can take a break and stay hydrated! 🧊💧😃")
+
         X_all = jnp.asarray(build_state.X, dtype=build_state.dtype)
         predictions = self._project_with_state(
             params=state.params,
@@ -1092,9 +1180,19 @@ class NLPOptNet:
         )
         objective_values = np.asarray(build_state.objective_fn(X_all, predictions), dtype=np.float64)
         violations = build_state.violation_fn(state.params, X_all)
+        max_violation = max(
+            float(np.asarray(violations["eq_inf"])),
+            float(np.asarray(violations["ineq_inf"])),
+            float(np.asarray(violations["bound_inf"])),
+        )
         summary = {
             "framework": "nlpoptnet",
+            "model_name": self.name,
             "problem_type": self.problem_type,
+            "num_parameters": int(len(self.parameter_names)),
+            "num_variables": int(len(self.variable_names)),
+            "num_equalities": int(build_state.backbone.me),
+            "num_inequalities": int(build_state.backbone.mi),
             "num_samples": int(build_state.X.shape[0]),
             "train_samples": int(build_state.train_idx.shape[0]),
             "val_samples": int(build_state.val_idx.shape[0]),
@@ -1109,12 +1207,22 @@ class NLPOptNet:
             "ineq_mean": float(np.asarray(violations["ineq_mean"])),
             "bound_inf": float(np.asarray(violations["bound_inf"])),
             "bound_mean": float(np.asarray(violations["bound_mean"])),
+            "max_violation": float(max_violation),
             "training_wall_time_sec": float(training_wall_time),
             "final_train_loss": float(history[-1]["train_loss"]),
             "final_val_loss": float(history[-1]["val_loss"]),
             "final_train_objective": float(history[-1]["train_objective"]),
             "final_val_objective": float(history[-1]["val_objective"]),
+            "final_train_consistency": float(history[-1]["train_consistency"]),
+            "final_val_consistency": float(history[-1]["val_consistency"]),
+            "final_train_eq_violation": float(history[-1]["train_eq_violation"]),
+            "final_val_eq_violation": float(history[-1]["val_eq_violation"]),
+            "final_train_ineq_violation": float(history[-1]["train_ineq_violation"]),
+            "final_val_ineq_violation": float(history[-1]["val_ineq_violation"]),
         }
+
+        # if bool(self.config.get("verbose", True)):
+        #     print("✅ Summary collected")
 
         run_dir = Path.cwd() / f"{self.name}_{timestamp()}"
         run_dir.mkdir(parents=True, exist_ok=False)
@@ -1122,18 +1230,44 @@ class NLPOptNet:
         predictions_path = run_dir / "predicted_variables.csv"
         history_path = run_dir / "history.csv"
         weights_path = run_dir / "model_weights.npz"
+        backbone_path = run_dir / "backbone_weights.npz"
         summary_path = run_dir / "summary.json"
         metadata_path = run_dir / "metadata.json"
         constants_path = run_dir / "problem_constants.npz"
+
+        # if bool(self.config.get("verbose", True)):
+        #     print("💾 Saving artifacts...")
 
         write_csv_matrix(parameters_path, build_state.X, headers=self.parameter_names)
         write_csv_matrix(predictions_path, np.asarray(predictions, dtype=np.float64), headers=self.variable_names)
         self._write_history_csv(history_path, history)
         np.savez(weights_path, params=np.array(jax.device_get(state.params), dtype=object))
+        backbone_metadata = save_backbone_npz(
+            backbone_path,
+            jax.device_get(state.params),
+            p=len(self.parameter_names),
+            n=len(self.variable_names),
+            me=int(build_state.backbone.me),
+            mi=int(build_state.backbone.mi),
+            hidden_size=int(build_state.cfg.hidden_size),
+            hidden_dim=int(build_state.cfg.hidden_dim),
+            dtype=str(build_state.train_config["dtype"]),
+        )
         np.savez(constants_path, **self._constants)
         if self._extracted_problem_path is not None:
             shutil.copy2(resolve_path(self._extracted_problem_path), run_dir / "problem.npz")
-        write_json(summary_path, summary)
+        native_manifest = compile_native_projection(run_dir)
+        native_projection_path = (
+            native_manifest.get("shared_library")
+            if native_manifest.get("status") == "ok"
+            else None
+        )
+        native_projection = None
+        if native_projection_path is not None:
+            try:
+                native_projection = NativeProjection(run_dir / str(native_projection_path))
+            except Exception:
+                native_projection = None
 
         lower_M, lower_c, upper_M, upper_c = self._build_box_bounds(
             n_x=len(self.parameter_names),
@@ -1167,12 +1301,36 @@ class NLPOptNet:
                 "predicted_variables": predictions_path.name,
                 "history": history_path.name,
                 "weights": weights_path.name,
+                "backbone_weights": backbone_path.name,
                 "summary": summary_path.name,
                 "constants": constants_path.name,
                 "problem_npz": "problem.npz" if self._extracted_problem_path is not None else None,
+                "native_projection": native_projection_path,
+                "native_projection_manifest": "projection_native.json",
             },
+            "backbone": backbone_metadata,
+            "native_projection": native_manifest,
         }
         write_json(metadata_path, metadata)
+        # if bool(self.config.get("verbose", True)):
+        #     print("✅ Artifacts saved")
+        
+        # if bool(self.config.get("verbose", True)):
+        #     print("⏳ Estimating inference time (this may take a while)...")
+        
+        summary.update(
+            self._estimate_inference_times(
+                metadata_path=metadata_path,
+                X_train=np.asarray(build_state.X[build_state.train_idx], dtype=np.float64),
+                batch_size=int(build_state.cfg.batch_size),
+            )
+        )
+
+        if bool(self.config.get("verbose", True)):
+        #     print("✅ Inference time estimation done")
+            print("✅ Done!!!")
+        
+        write_json(summary_path, summary)
 
         self._metadata_path = str(metadata_path)
         self._inference_state = _InferenceState(
@@ -1184,7 +1342,20 @@ class NLPOptNet:
             sub_layer=build_state.sub_layer,
             n_x=len(self.parameter_names),
             output_dir=str(run_dir),
+            native_projection=native_projection,
+            native_backbone=load_backbone_npz(backbone_path),
         )
+
+        msg = (
+        "\n" + "="*120 + "\n"
+        "If you use this model in your research, please cite:\n"
+        "Nath Roy, Golder, & Hasan (2026) NLPOpt-Net: Nonlinear Parametric Optimization Network with Feasibility Guarantees.\n"
+        "https://github.com/SOULS-TAMU/NLPOpt-Net\n"
+        "Contact: bimolnathroy@tamu.edu, rahulgolder8420@tamu.edu, hasan@tamu.edu\n"
+        + "="*120 + "\n"
+        )
+        print(msg)
+
         return {
             "output_dir": str(run_dir),
             "metadata_path": str(metadata_path),
@@ -1192,7 +1363,7 @@ class NLPOptNet:
             "history": history,
         }
 
-    def load(self, metadata_path: str | Path) -> "NLPOptNet":
+    def load(self, metadata_path: str | Path, *, verbose: bool | None = None) -> "NLPOptNet":
         metadata_file = resolve_path(metadata_path)
         with open(metadata_file, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
@@ -1207,6 +1378,7 @@ class NLPOptNet:
         self.problem_type = _normalize_problem_type(payload.get("problem_type"))
         self.config = copy.deepcopy(_DEFAULT_CONFIG)
         self.config.update(copy.deepcopy(dict(payload.get("config", {}))))
+        _apply_config_aliases(self.config)
         self.parameter_names = list(payload["problem"]["parameter_names"])
         self.variable_names = list(payload["problem"]["variable_names"])
         self.parameter = _SymbolNamespace(self, "parameter")
@@ -1241,6 +1413,21 @@ class NLPOptNet:
         cfg = cfg_from_dict(train_cfg)
         weights_file = metadata_file.parent / payload["artifacts"]["weights"]
         params = np.load(weights_file, allow_pickle=True)["params"].item()
+        native_backbone = None
+        backbone_name = payload.get("artifacts", {}).get("backbone_weights")
+        if backbone_name is not None:
+            backbone_file = metadata_file.parent / str(backbone_name)
+            if backbone_file.exists():
+                native_backbone = load_backbone_npz(backbone_file)
+        native_projection = None
+        native_name = payload.get("artifacts", {}).get("native_projection")
+        if native_name is not None:
+            native_file = metadata_file.parent / str(native_name)
+            if native_file.exists():
+                try:
+                    native_projection = NativeProjection(native_file)
+                except Exception:
+                    native_projection = None
 
         self._metadata_path = str(metadata_file)
         self._inference_state = _InferenceState(
@@ -1252,10 +1439,27 @@ class NLPOptNet:
             sub_layer=make_subproblem_layer_from_model(model),
             n_x=n_x,
             output_dir=str(metadata_file.parent),
+            native_projection=native_projection,
+            native_backbone=native_backbone,
         )
+        if verbose is None:
+            verbose = bool(self.config.get("verbose", True))
+
+        if verbose:
+            from datetime import datetime
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            print("\n" + "="*120)
+            print("✅ Model Loaded Successfully")
+            print("-"*120)
+            print(f"Model Name   : {self.name}")
+            print(f"Location     : {metadata_file.parent}")
+            print(f"Time         : {now}")
+            print("="*120 + "\n")
+
         return self
 
-    def predict(self, values) -> np.ndarray:
+    def predict(self, values, *, projection_backend: str = "auto") -> np.ndarray:
         if self._inference_state is None:
             raise RuntimeError("Please train or load the model before calling predict().")
         data = np.asarray(values, dtype=np.float64)
@@ -1266,6 +1470,16 @@ class NLPOptNet:
             raise ValueError(
                 f"predict expected a 1D or 2D array with {self._inference_state.n_x} parameter values."
             )
+        backend = str(projection_backend).strip().lower()
+        if backend not in {"auto", "native", "jax"}:
+            raise ValueError("projection_backend must be one of 'auto', 'native', or 'jax'.")
+        use_native = backend == "native" or (
+            backend == "auto"
+            and bool(self.config.get("native_projection", True))
+            and self._inference_state.native_projection is not None
+        )
+        if backend == "native" and self._inference_state.native_projection is None:
+            raise RuntimeError("This run does not have a loadable native projection artifact.")
         x_batch = jnp.asarray(data, dtype=resolve_dtype(str(self._inference_state.train_config["dtype"])))
         projected = self._project_with_state(
             params=self._inference_state.params,
@@ -1273,11 +1487,227 @@ class NLPOptNet:
             sub_layer=self._inference_state.sub_layer,
             cfg=self._inference_state.cfg,
             X=x_batch,
+            X_numpy=data,
+            native_projection=self._inference_state.native_projection if use_native else None,
+            native_backbone=self._inference_state.native_backbone,
         )
         out = np.asarray(projected, dtype=np.float64)
         return out[0] if squeeze else out
 
-    def _project_with_state(self, *, params, backbone, sub_layer, cfg, X):
+    def summary(self) -> dict[str, Any]:
+        run_dir = self._run_dir()
+        summary_path = run_dir / "summary.json"
+        if not summary_path.exists():
+            raise RuntimeError(f"summary.json not found in {run_dir}. Train or load a completed run first.")
+        with open(summary_path, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+
+        rows = [
+            ("Model Name", payload.get("model_name", self.name)),
+            ("No. of Parameters", payload.get("num_parameters", len(self.parameter_names))),
+            ("No. of Variables", payload.get("num_variables", len(self.variable_names))),
+            ("No. of Equalities", payload.get("num_equalities")),
+            ("No. of Inequalities", payload.get("num_inequalities")),
+            ("No. of Train Samples", payload.get("train_samples")),
+            ("No. of Validation Samples", payload.get("val_samples")),
+            ("Maximum Constraint Violation", payload.get("max_violation")),
+            ("Training Time", payload.get("training_wall_time_sec")),
+            ("Est. JAX Single Inference Time", _fmt_time_sec(payload.get("estimated_jax_single_inference_time_sec"))),
+            ("Est. Native Single Inference Time", _fmt_time_sec(payload.get("estimated_native_single_inference_time_sec"))),
+            ("Est. JAX Batch Inference Time", _fmt_time_sec(payload.get("estimated_jax_batch_inference_time_sec"))),]
+        print("📊 NLPOptNet Summary")
+        print("-" * 60)
+
+        # compute max width of keys
+        max_key_len = max(len(key) for key, _ in rows)
+
+        for key, value in rows:
+            print(f"{key:<{max_key_len}} : {_fmt_summary_value(value)}")
+        print("-" * 60)
+
+    def plot_history(self, *, show: bool = True, save_dir: str | Path | None = None):
+        history = self._read_history()
+        epochs = history["epoch"]
+        tr_obj = history["train_objective"]
+        val_obj = history["val_objective"]
+        tr_violation = np.maximum(self._history_column(history, "train_eq_violation"), self._history_column(history, "train_ineq_violation"))
+        val_violation = np.maximum(self._history_column(history, "val_eq_violation"), self._history_column(history, "val_ineq_violation"))
+        tr_violation = np.maximum(tr_violation, 1e-16)
+        val_violation = np.maximum(val_violation, 1e-16)
+
+        import os
+
+        os.environ.setdefault("MPLCONFIGDIR", "/tmp")
+        import matplotlib.pyplot as plt
+        from matplotlib import font_manager
+
+        font_names = {font.name for font in font_manager.fontManager.ttflist}
+        font_family = "Arial" if "Arial" in font_names else "DejaVu Sans"
+
+        with plt.style.context("ggplot"):
+            plt.rcParams.update(
+                {
+                    "font.family": font_family,
+                    "font.size": 32,
+                    "axes.titlesize": 32,
+                    "axes.labelsize": 24,
+                    "legend.fontsize": 24,
+                    "xtick.labelsize": 20,
+                    "ytick.labelsize": 20,
+                }
+            )
+            fig, axes = plt.subplots(1, 2, figsize=(20, 6), facecolor="#E5E5E5")
+            axes[0].plot(epochs, tr_obj, linewidth=2, label="Train Objective")
+            axes[0].plot(epochs, val_obj, linewidth=2, linestyle="--", label="Validation Objective")
+            axes[0].set_xlabel("Epoch")
+            axes[0].set_ylabel("Objective")
+            axes[0].set_title("Objective Evolution")
+            axes[0].legend()
+            axes[0].grid(True, alpha=0.3)
+
+            axes[1].plot(epochs, tr_violation, linewidth=2, label="Train Violation")
+            axes[1].plot(epochs, val_violation, linewidth=2, linestyle="--", label="Validation Violation")
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Max. Violation")
+            axes[1].set_title("Constraint Violation")
+            axes[1].set_yscale("log")
+            axes[1].legend()
+            axes[1].grid(True, alpha=0.3)
+
+            fig.tight_layout()
+            if save_dir is not None:
+                target = resolve_path(save_dir)
+                target.mkdir(parents=True, exist_ok=True)
+                fig.savefig(target / "history_plot.png", dpi=600, bbox_inches="tight")
+            if show:
+                plt.show()
+        return fig, axes
+
+    def _run_dir(self) -> Path:
+        if self._inference_state is not None and self._inference_state.output_dir is not None:
+            return resolve_path(self._inference_state.output_dir)
+        if self._metadata_path is not None:
+            return resolve_path(self._metadata_path).parent
+        raise RuntimeError("No completed or loaded run is available.")
+
+    def _read_history(self) -> dict[str, np.ndarray]:
+        run_dir = self._run_dir()
+        history_path = run_dir / "history.csv"
+        if not history_path.exists():
+            raise RuntimeError(f"history.csv not found in {run_dir}.")
+        data = np.genfromtxt(history_path, delimiter=",", names=True, dtype=np.float64, encoding="utf-8")
+        if data.dtype.names is None:
+            raise RuntimeError(f"history.csv has no header: {history_path}")
+        return {name: np.atleast_1d(data[name]).astype(np.float64) for name in data.dtype.names}
+
+    @staticmethod
+    def _history_column(history: dict[str, np.ndarray], name: str) -> np.ndarray:
+        if name in history:
+            return history[name]
+        aliases = {
+            "train_eq_violation": ("train_eq_l2", "train_eq", "train_eq_inf"),
+            "val_eq_violation": ("val_eq_l2", "val_eq", "val_eq_inf"),
+            "train_ineq_violation": ("train_ineq_l2", "train_ineq", "train_ineq_inf"),
+            "val_ineq_violation": ("val_ineq_l2", "val_ineq", "val_ineq_inf"),
+        }
+        for alias in aliases.get(name, ()):
+            if alias in history:
+                return history[alias]
+        if "epoch" in history:
+            return np.zeros_like(history["epoch"], dtype=np.float64)
+        raise KeyError(name)
+
+    def _estimate_inference_times(
+        self,
+        *,
+        metadata_path: Path,
+        X_train: np.ndarray,
+        batch_size: int,
+        repetitions: int = 50,
+    ) -> dict[str, Any]:
+        samples = np.asarray(X_train, dtype=np.float64)
+        if samples.ndim != 2 or samples.shape[0] == 0:
+            return {
+                "estimated_inference_samples": 0,
+                "estimated_jax_single_inference_time_sec": None,
+                "estimated_native_single_inference_time_sec": None,
+                "estimated_jax_batch_inference_time_sec": None,
+                "estimated_jax_batch_size": int(batch_size),
+            }
+        n_single = int(min(int(repetitions), samples.shape[0]))
+        single_samples = samples[:n_single]
+        loaded = NLPOptNet().load(metadata_path, verbose=False)
+
+        def time_single_backend(backend: str) -> dict[str, Any]:
+            try:
+                loaded.predict(single_samples[0], projection_backend=backend)
+                start = time.perf_counter()
+                for row in single_samples:
+                    loaded.predict(row, projection_backend=backend)
+                elapsed = time.perf_counter() - start
+                return {
+                    f"estimated_{backend}_single_inference_time_sec": float(elapsed / n_single),
+                    f"estimated_{backend}_single_total_time_sec": float(elapsed),
+                    f"estimated_{backend}_single_error": None,
+                }
+            except Exception as exc:
+                return {
+                    f"estimated_{backend}_single_inference_time_sec": None,
+                    f"estimated_{backend}_single_total_time_sec": None,
+                    f"estimated_{backend}_single_error": f"{type(exc).__name__}: {exc}",
+                }
+
+        out: dict[str, Any] = {
+            "estimated_inference_samples": n_single,
+            "estimated_jax_batch_size": int(batch_size),
+        }
+        out.update(time_single_backend("jax"))
+        out.update(time_single_backend("native"))
+
+        try:
+            batch_size = int(max(1, batch_size))
+            if samples.shape[0] < batch_size:
+                reps = int(np.ceil(batch_size / samples.shape[0]))
+                batch = np.tile(samples, (reps, 1))[:batch_size]
+            else:
+                batch = samples[:batch_size]
+            loaded.predict(batch, projection_backend="jax")
+            start = time.perf_counter()
+            for _ in range(int(repetitions)):
+                loaded.predict(batch, projection_backend="jax")
+            elapsed = time.perf_counter() - start
+            out["estimated_jax_batch_inference_time_sec"] = float(elapsed / int(repetitions))
+            out["estimated_jax_batch_total_time_sec"] = float(elapsed)
+            out["estimated_jax_batch_error"] = None
+        except Exception as exc:
+            out["estimated_jax_batch_inference_time_sec"] = None
+            out["estimated_jax_batch_total_time_sec"] = None
+            out["estimated_jax_batch_error"] = f"{type(exc).__name__}: {exc}"
+        return out
+
+    def _project_with_state(
+        self,
+        *,
+        params,
+        backbone,
+        sub_layer,
+        cfg,
+        X,
+        X_numpy=None,
+        native_projection=None,
+        native_backbone=None,
+    ):
+        if native_projection is not None:
+            return self._project_with_native_state(
+                params=params,
+                backbone=backbone,
+                sub_layer=sub_layer,
+                cfg=cfg,
+                X=X,
+                X_numpy=X_numpy,
+                native_projection=native_projection,
+                native_backbone=native_backbone,
+            )
         y_hat, lam_hat, mu_hat = backbone.apply({"params": params}, X)
         y_proj, _, _ = apply_projection_layers(
             sub_layer=sub_layer,
@@ -1290,11 +1720,54 @@ class NLPOptNet:
         _block_until_ready(y_proj)
         return y_proj
 
+    def _project_with_native_state(
+        self,
+        *,
+        params,
+        backbone,
+        sub_layer,
+        cfg,
+        X,
+        X_numpy,
+        native_projection,
+        native_backbone,
+    ):
+        dtype = resolve_dtype(str(cfg.dtype))
+        if X_numpy is None:
+            X_numpy = np.asarray(X, dtype=np.float64)
+        if native_backbone is not None:
+            y_curr, lam_curr, mu_curr = backbone_forward_numpy(native_backbone, np.asarray(X_numpy, dtype=np.float64))
+        else:
+            y_hat, lam_hat, mu_hat = backbone.apply({"params": params}, X)
+            y_curr = np.asarray(_block_until_ready(y_hat), dtype=np.float64)
+            lam_curr = np.asarray(_block_until_ready(lam_hat), dtype=np.float64)
+            mu_curr = np.asarray(_block_until_ready(mu_hat), dtype=np.float64)
+        x_batch = jnp.asarray(X_numpy, dtype=dtype)
+        for _ in range(int(cfg.k_layer)):
+            q_data = sub_layer(x_batch, jnp.asarray(y_curr, dtype=dtype))
+            Q_diag, c, A, b, C, d, l, u = _block_until_ready(q_data)
+            y_curr, lam_curr, mu_curr = native_projection.solve(
+                np.asarray(Q_diag, dtype=np.float64),
+                np.asarray(c, dtype=np.float64),
+                np.asarray(A, dtype=np.float64),
+                np.asarray(b, dtype=np.float64),
+                np.asarray(C, dtype=np.float64),
+                np.asarray(d, dtype=np.float64),
+                np.asarray(l, dtype=np.float64),
+                np.asarray(u, dtype=np.float64),
+                y_curr,
+                lam_curr,
+                mu_curr,
+                cfg=cfg,
+            )
+        return jnp.asarray(y_curr, dtype=dtype)
+
     def _metadata_config(self, train_config: dict[str, Any]) -> dict[str, Any]:
         out = dict(train_config)
         out["hidden_layers"] = int(self.config["hidden_layers"])
         out["verbose"] = bool(self.config.get("verbose", True))
         out["num_samples"] = int(self.config.get("num_samples", 1000))
+        out["native_projection"] = bool(self.config.get("native_projection", True))
         return out
 
     def _problem_is_serializable(self) -> bool:
@@ -1318,29 +1791,31 @@ class NLPOptNet:
         )
 
     def _train_cfg_dict(self, batch_size: int) -> dict[str, Any]:
+        _apply_config_aliases(self.config)
         return {
             "batch_size": int(batch_size),
             "epochs": int(self.config["epochs"]),
             "learning_rate": float(self.config["learning_rate"]),
-            "alpha_consistency": float(self.config.get("alpha_consistency", 1.0)),
+            "alpha_consistency": float(self.config.get("alpha_consistency", _DEFAULT_CONFIG["alpha_consistency"])),
             "train_frac": float(self.config["train_frac"]),
             "hidden_size": int(self.config["hidden_size"]),
             "hidden_dim": int(self.config["hidden_layers"]),
-            "cp_iters": int(self.config.get("cp_iters", 5000)),
-            "cp_tol": float(self.config.get("cp_tol", 1e-6)),
+            "cp_mode": str(self.config.get("cp_mode", _DEFAULT_CONFIG["cp_mode"])),
+            "cp_iters": int(self.config.get("cp_iters", _DEFAULT_CONFIG["cp_iters"])),
+            "cp_tol": float(self.config.get("cp_tol", _DEFAULT_CONFIG["cp_tol"])),
             "IS_FIXED": bool(self.config.get("IS_FIXED", True)),
             "stepsize": str(self.config.get("stepsize", "auto")),
-            "safety": float(self.config.get("safety", 0.90)),
-            "knorm_iters": int(self.config.get("knorm_iters", 20)),
-            "knorm_seed": int(self.config.get("knorm_seed", 42)),
+            "safety": float(self.config.get("safety", _DEFAULT_CONFIG["safety"])),
+            "knorm_iters": int(self.config.get("knorm_iters", _DEFAULT_CONFIG["knorm_iters"])),
+            "knorm_seed": int(self.config.get("knorm_seed", _DEFAULT_CONFIG["knorm_seed"])),
             "seed": int(self.config["seed"]),
-            "adjoint_iters": int(self.config.get("adjoint_iters", 50)),
-            "use_ruiz": bool(self.config.get("use_ruiz", True)),
-            "ruiz_iters": int(self.config.get("ruiz_iters", 4)),
-            "k_layer": int(self.config.get("k_layer", 1)),
+            "adjoint_iters": int(self.config.get("adjoint_iters", _DEFAULT_CONFIG["adjoint_iters"])),
+            "use_ruiz": bool(self.config.get("use_ruiz", _DEFAULT_CONFIG["use_ruiz"])),
+            "ruiz_iters": int(self.config.get("ruiz_iters", _DEFAULT_CONFIG["ruiz_iters"])),
+            "k_layer": int(self.config.get("k_layer", _DEFAULT_CONFIG["k_layer"])),
             "dtype": str(self.config["dtype"]),
-            "device": str(self.config.get("device", "auto")),
-            "jit_warmup": bool(self.config.get("jit_warmup", True)),
+            "device": str(self.config.get("device", _DEFAULT_CONFIG["device"])),
+            "jit_warmup": bool(self.config.get("jit_warmup", _DEFAULT_CONFIG["jit_warmup"])),
         }
 
     def _load_or_sample_parameters(self, *, n_x: int) -> np.ndarray:

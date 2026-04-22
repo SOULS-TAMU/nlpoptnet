@@ -9,7 +9,7 @@ from ..models import State
 from .config import TrainConfig
 
 Array = jnp.ndarray
-_METRIC_KEYS = ("loss", "obj", "mse_y", "mse_lam", "mse_mu")
+_METRIC_KEYS = ("loss", "obj", "consistency", "eq_violation", "ineq_violation", "mse_y", "mse_lam", "mse_mu")
 
 
 def build_epoch_fns(train_step, eval_step):
