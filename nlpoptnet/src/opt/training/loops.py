@@ -1,3 +1,5 @@
+"""Epoch loops, warmup, and batch-shaping helpers for training."""
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, Tuple
@@ -13,6 +15,7 @@ _METRIC_KEYS = ("loss", "obj", "consistency", "eq_violation", "ineq_violation", 
 
 
 def build_epoch_fns(train_step, eval_step):
+    """Build per-epoch train and evaluation reducers over fixed batches."""
     @jax.jit
     def train_epoch(state, batches):
         def body(carry, xb):
@@ -47,6 +50,7 @@ def warmup_compile(
     dtype=jnp.float64,
     device=None,
 ):
+    """Trigger one train and eval pass to populate JIT caches."""
     key = jax.random.PRNGKey(cfg.seed)
     xb = jax.random.normal(key, (cfg.batch_size, p), dtype=dtype)
     if device is not None:
@@ -59,6 +63,7 @@ def warmup_compile(
 
 
 def make_fixed_batches(X: Array, batch_size: int) -> Array:
+    """Trim a dataset and reshape it into fixed-size batches."""
     n_samples = X.shape[0]
     n_trimmed = (n_samples // batch_size) * batch_size
     X = X[:n_trimmed]

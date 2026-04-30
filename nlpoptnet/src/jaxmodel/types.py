@@ -1,3 +1,5 @@
+"""Shared type aliases for the JAX modeling layer."""
+
 from typing import Callable, Dict, Tuple, Any
 import jax.numpy as jnp
 

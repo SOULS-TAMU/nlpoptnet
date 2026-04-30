@@ -1,3 +1,5 @@
+"""Core JAX NLP model object used by the NLPOptNet training pipeline."""
+
 from __future__ import annotations
 from typing import Sequence, Optional
 import jax
@@ -28,6 +30,35 @@ from .approximations import (
 
 
 class JaxNLPModel:
+    r"""Differentiable nonlinear program in packed-vector form.
+
+    ``JaxNLPModel`` represents a parametric optimization problem as a set of
+    JAX-callable evaluators over a flat decision-variable vector :math:`y` and
+    parameter dictionary :math:`x`.
+
+    The model is organized around the canonical form
+
+    .. math::
+
+        \begin{aligned}
+            \min_y \quad & f(y, x) \\
+            \text{s.t.}\quad & h(y, x) = 0, \\
+            & g(y, x) \le 0, \\
+            & \ell(x) \le y \le u(x).
+        \end{aligned}
+
+    In addition to evaluating the objective and residuals, the model exposes
+    derivatives and local approximations used by the projection and training
+    pipeline:
+
+    .. math::
+
+        \nabla_y f,\qquad \nabla_y^2 f,\qquad
+        \nabla_y h,\qquad \nabla_y g
+
+    and SQP-style local subproblem data.
+    """
+
     def __init__(
         self,
         var_spec: VariableSpec,
@@ -38,6 +69,7 @@ class JaxNLPModel:
         dtype=jnp.float64,
         jit_compile: bool = True,
     ):
+        """Initialize the model and optionally JIT-compile its evaluators."""
         self.var_spec = var_spec
         self.parameter_spec = parameter_spec
         self.dtype = dtype
@@ -86,6 +118,7 @@ class JaxNLPModel:
 
     @staticmethod
     def _detect_constraint_structure(constraints: Sequence[ConstraintEntry]) -> str:
+        """Classify a constraint set as affine, quadratic, nonlinear, mixed, or empty."""
         if len(constraints) == 0:
             return "empty"
         structures = {c.structure for c in constraints}
@@ -96,6 +129,7 @@ class JaxNLPModel:
         return "mixed"
 
     def _compile(self):
+        """JIT-compile the main evaluators used during training and inference."""
         self.objective_value = jax.jit(self.objective_value)
         self.grad_y_objective = jax.jit(self.grad_y_objective)
         self.hess_y_objective = jax.jit(self.hess_y_objective)
@@ -130,50 +164,64 @@ class JaxNLPModel:
         )
 
     def pack_vars(self, values):
+        """Pack named variable blocks into the flat representation."""
         return self.var_spec.pack(values, dtype=self.dtype)
 
     def unpack_vars(self, y):
+        """Unpack a flat variable vector into named blocks."""
         return self.var_spec.unpack(y)
 
     def objective_value(self, params, y):
+        """Evaluate the scalar objective."""
         return self._obj_flat(params, y)
 
     def validate_params(self, params):
+        """Validate input parameters against the stored parameter specification."""
         if self.parameter_spec is not None:
             self.parameter_spec.validate(params)
 
     def grad_y_objective(self, params, y):
+        """Return the objective gradient with respect to variables."""
         return self._grad_f_y(y, params)
 
     def hess_y_objective(self, params, y):
+        """Return the objective Hessian with respect to variables."""
         return self._hess_f_y(y, params)
 
     def diag_hess_y_objective(self, params, y):
+        """Return the diagonal objective Hessian with respect to variables."""
         return self._diag_hess_f_y(params, y)
 
     def eq_residual(self, params, y):
+        """Evaluate all equality residuals."""
         return self._eq_fun(params, y)
 
     def ineq_residual(self, params, y):
+        """Evaluate all inequality residuals."""
         return self._ineq_fun(params, y)
 
     def jac_y_eq(self, params, y):
+        """Return the Jacobian of the equality residuals."""
         return self._jac_h_y(y, params)
 
     def jac_y_ineq(self, params, y):
+        """Return the Jacobian of the inequality residuals."""
         return self._jac_g_y(y, params)
 
     def lower_bounds(self, params):
+        """Evaluate lower bounds, if present."""
         if self.bounds.lower_fun is None:
             return None
         return self.bounds.lower_fun(params)
 
     def upper_bounds(self, params):
+        """Evaluate upper bounds, if present."""
         if self.bounds.upper_fun is None:
             return None
         return self.bounds.upper_fun(params)
 
     def bound_residuals(self, params, y):
+        """Return lower- and upper-bound residual vectors."""
         lb = jnp.zeros((0,), dtype=y.dtype)
         ub = jnp.zeros((0,), dtype=y.dtype)
 
@@ -185,6 +233,7 @@ class JaxNLPModel:
         return lb, ub
 
     def linearize_constraints(self, params, y):
+        """Return affine residual linearizations around ``y``."""
         return linearize_constraints(
             eq_fun=self._eq_fun,
             ineq_fun=self._ineq_fun,
@@ -195,6 +244,7 @@ class JaxNLPModel:
         )
 
     def linearization_data(self, params, y):
+        """Return structured affine linearization data around ``y``."""
         return linearize_constraints_data(
             eq_fun=self._eq_fun,
             ineq_fun=self._ineq_fun,
@@ -212,6 +262,7 @@ class JaxNLPModel:
         use_diagonal_hessian: bool = True,
         diag_floor=None,
     ):
+        """Return a quadratic objective approximation around ``y``."""
         return quadraticize_objective(
             grad_fun=self._grad_f_y,
             hess_fun=self._hess_f_y,
@@ -231,6 +282,7 @@ class JaxNLPModel:
         use_diagonal_hessian: bool = True,
         diag_floor=None,
     ):
+        """Return structured quadratic objective approximation data."""
         return quadraticize_objective_data(
             grad_fun=self._grad_f_y,
             hess_fun=self._hess_f_y,
@@ -250,6 +302,7 @@ class JaxNLPModel:
         use_diagonal_hessian: bool = True,
         diag_floor=None,
     ):
+        """Return a flat dictionary describing a local SQP approximation."""
         return build_sqp_data(
             eq_fun=self._eq_fun,
             ineq_fun=self._ineq_fun,
@@ -275,6 +328,7 @@ class JaxNLPModel:
         use_diagonal_hessian: bool = True,
         diag_floor=None,
     ):
+        """Return structured data for a local SQP subproblem."""
         return build_sqp_subproblem_data(
             eq_fun=self._eq_fun,
             ineq_fun=self._ineq_fun,

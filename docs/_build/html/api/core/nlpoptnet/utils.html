@@ -1,0 +1,167 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nlpoptnet.utils &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=8110c214" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="opt" href="../opt/index.html" />
+    <link rel="prev" title="nlpoptnet.serialization" href="serialization.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../package/index.html">Package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Core</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../jaxmodel/index.html">jaxmodel</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">nlpoptnet core</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="module_init.html">nlpoptnet package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html">nlpoptnet.api</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html">nlpoptnet.sampling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="serialization.html">nlpoptnet.serialization</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.utils</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.utils.resolve_dtype"><code class="docutils literal notranslate"><span class="pre">resolve_dtype()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.utils.timestamp"><code class="docutils literal notranslate"><span class="pre">timestamp()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.utils.resolve_path"><code class="docutils literal notranslate"><span class="pre">resolve_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.utils.json_safe"><code class="docutils literal notranslate"><span class="pre">json_safe()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.utils.write_json"><code class="docutils literal notranslate"><span class="pre">write_json()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../opt/index.html">opt</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../citations.html">Citations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../LICENSE.html">LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Core</a></li>
+          <li class="breadcrumb-item"><a href="index.html">nlpoptnet core</a></li>
+      <li class="breadcrumb-item active">nlpoptnet.utils</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/SOULS-TAMU/NLPOpt-Net/blob/main/docs/api/core/nlpoptnet/utils.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-nlpoptnet.utils">
+<span id="nlpoptnet-utils"></span><h1>nlpoptnet.utils<a class="headerlink" href="#module-nlpoptnet.utils" title="Link to this heading"></a></h1>
+<p>General utility helpers for paths, timestamps, JSON, and dtype handling.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.utils.resolve_dtype">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.utils.</span></span><span class="sig-name descname"><span class="pre">resolve_dtype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/utils.html#resolve_dtype"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.utils.resolve_dtype" title="Link to this definition"></a></dt>
+<dd><p>Resolve a string dtype name into a JAX dtype object.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.utils.timestamp">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.utils.</span></span><span class="sig-name descname"><span class="pre">timestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/utils.html#timestamp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.utils.timestamp" title="Link to this definition"></a></dt>
+<dd><p>Return a compact filesystem-friendly timestamp string.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.utils.resolve_path">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.utils.</span></span><span class="sig-name descname"><span class="pre">resolve_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/utils.html#resolve_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.utils.resolve_path" title="Link to this definition"></a></dt>
+<dd><p>Resolve a path relative to the current working directory.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.utils.json_safe">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.utils.</span></span><span class="sig-name descname"><span class="pre">json_safe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/utils.html#json_safe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.utils.json_safe" title="Link to this definition"></a></dt>
+<dd><p>Convert arrays and scalar types into JSON-serializable values.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.utils.write_json">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.utils.</span></span><span class="sig-name descname"><span class="pre">write_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">payload</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/utils.html#write_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.utils.write_json" title="Link to this definition"></a></dt>
+<dd><p>Write a JSON payload after normalizing non-JSON-native values.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="serialization.html" class="btn btn-neutral float-left" title="nlpoptnet.serialization" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../opt/index.html" class="btn btn-neutral float-right" title="opt" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+"""Training-configuration dataclasses and normalization helpers."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -6,6 +8,48 @@ from typing import Any, Dict
 
 @dataclass(frozen=True)
 class TrainConfig:
+    r"""Typed training and projection hyperparameters.
+
+    Attributes
+    ----------
+    batch_size:
+        Mini-batch size used for train and validation updates.
+    epochs:
+        Number of optimization epochs.
+    learning_rate:
+        Adam learning rate for the neural backbone.
+    alpha_consistency:
+        Weight applied to the projection-consistency penalty.
+    train_frac, val_frac:
+        Fractions used when splitting parameter samples.
+    hidden_size, hidden_dim:
+        Backbone width and number of hidden layers.
+    cp_iters, cp_tol, cp_mode:
+        Projection-operator iteration budget, tolerance, and mode.
+    safety, knorm_iters, knorm_seed:
+        Step-size and operator-norm estimation controls.
+    adjoint_iters:
+        Iteration budget used in implicit differentiation.
+    use_ruiz, ruiz_iters:
+        Controls for Ruiz equilibration.
+    k_layer:
+        Number of projection layers to apply after the backbone.
+    dtype, device, jit_warmup:
+        Numeric precision and execution settings.
+
+    Notes
+    -----
+    The projection-oriented part of the training loop can be viewed as
+
+    .. math::
+
+        (\hat y, \hat \lambda, \hat \mu) = \Phi_\theta(x), \qquad
+        (y^\star, \lambda^\star, \mu^\star) = \Pi(\hat y, \hat \lambda, \hat \mu; x),
+
+    where ``k_layer``, ``cp_mode``, ``cp_iters``, ``cp_tol``, ``safety``, and
+    the Ruiz-scaling options control the projection operator :math:`\Pi`.
+    """
+
     batch_size: int = 500
     epochs: int = 5000
     learning_rate: float = 1e-3
@@ -33,6 +77,7 @@ class TrainConfig:
 
 
 def cfg_from_dict(d: Dict[str, Any]) -> TrainConfig:
+    """Normalize a config dictionary into a validated :class:`TrainConfig`."""
     base = asdict(TrainConfig())
     base.update(d)
     if "cp_mode" in d:

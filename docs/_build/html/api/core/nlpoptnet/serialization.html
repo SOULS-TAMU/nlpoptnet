@@ -1,0 +1,153 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nlpoptnet.serialization &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=8110c214" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="nlpoptnet.utils" href="utils.html" />
+    <link rel="prev" title="nlpoptnet.sampling" href="sampling.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../package/index.html">Package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Core</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../jaxmodel/index.html">jaxmodel</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">nlpoptnet core</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="module_init.html">nlpoptnet package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html">nlpoptnet.api</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sampling.html">nlpoptnet.sampling</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.serialization</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.parse_constraint_text"><code class="docutils literal notranslate"><span class="pre">parse_constraint_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.make_scalar_eval_fn"><code class="docutils literal notranslate"><span class="pre">make_scalar_eval_fn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.build_model_from_problem_spec"><code class="docutils literal notranslate"><span class="pre">build_model_from_problem_spec()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html">nlpoptnet.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../opt/index.html">opt</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../citations.html">Citations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../LICENSE.html">LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Core</a></li>
+          <li class="breadcrumb-item"><a href="index.html">nlpoptnet core</a></li>
+      <li class="breadcrumb-item active">nlpoptnet.serialization</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/SOULS-TAMU/NLPOpt-Net/blob/main/docs/api/core/nlpoptnet/serialization.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-nlpoptnet.serialization">
+<span id="nlpoptnet-serialization"></span><h1>nlpoptnet.serialization<a class="headerlink" href="#module-nlpoptnet.serialization" title="Link to this heading"></a></h1>
+<p>Serialization helpers for rebuilding symbolic NLPOptNet problems.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.serialization.parse_constraint_text">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">parse_constraint_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#parse_constraint_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.parse_constraint_text" title="Link to this definition"></a></dt>
+<dd><p>Convert serialized constraint text into residual form and constraint kind.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.serialization.make_scalar_eval_fn">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">make_scalar_eval_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constants</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#make_scalar_eval_fn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.make_scalar_eval_fn" title="Link to this definition"></a></dt>
+<dd><p>Build a scalar evaluator from serialized expression text.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nlpoptnet.serialization.build_model_from_problem_spec">
+<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">build_model_from_problem_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">problem_spec:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">*,</span> <span class="pre">constants:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">dtype=&lt;class</span> <span class="pre">'jax.numpy.float64'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#build_model_from_problem_spec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.build_model_from_problem_spec" title="Link to this definition"></a></dt>
+<dd><p>Rebuild a serializable jaxmodel problem from saved metadata.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sampling.html" class="btn btn-neutral float-left" title="nlpoptnet.sampling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utils.html" class="btn btn-neutral float-right" title="nlpoptnet.utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

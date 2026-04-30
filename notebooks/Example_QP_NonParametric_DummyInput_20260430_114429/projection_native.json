@@ -1,0 +1,55 @@
+{
+  "artifacts": {
+    "linux-x86_64": {
+      "command": [
+        "cc",
+        "-O3",
+        "-std=c99",
+        "-fPIC",
+        "-shared",
+        "/tmp/nlpoptnet_native_iy6m5rx3/projection_native.c",
+        "-lm",
+        "-o",
+        "/mnt/research/Hasan_Faruque/Shared/NLPOptNet/notebooks/Example_QP_NonParametric_DummyInput_20260430_114429/native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so"
+      ],
+      "compiler": "cc",
+      "machine": "x86_64",
+      "platform": "Linux",
+      "platform_tag": "linux-x86_64",
+      "returncode": 0,
+      "shared_library": "native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so",
+      "source": null,
+      "source_stored": false,
+      "source_version": "cp-sequential-20260422",
+      "status": "ok",
+      "stderr": "",
+      "stdout": ""
+    }
+  },
+  "batch_mode": "sequential",
+  "cache_scope": "run",
+  "command": [
+    "cc",
+    "-O3",
+    "-std=c99",
+    "-fPIC",
+    "-shared",
+    "/tmp/nlpoptnet_native_iy6m5rx3/projection_native.c",
+    "-lm",
+    "-o",
+    "/mnt/research/Hasan_Faruque/Shared/NLPOptNet/notebooks/Example_QP_NonParametric_DummyInput_20260430_114429/native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so"
+  ],
+  "compiler": "cc",
+  "format": "nlpoptnet-native-projection-v2",
+  "machine": "x86_64",
+  "platform": "Linux",
+  "platform_tag": "linux-x86_64",
+  "returncode": 0,
+  "shared_library": "native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so",
+  "source": null,
+  "source_stored": false,
+  "source_version": "cp-sequential-20260422",
+  "status": "ok",
+  "stderr": "",
+  "stdout": ""
+}

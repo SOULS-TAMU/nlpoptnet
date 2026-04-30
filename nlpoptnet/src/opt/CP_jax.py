@@ -1,3 +1,5 @@
+"""JAX implementations of fixed-step and accelerated Chambolle-Pock solvers."""
+
 from __future__ import annotations
 
 import jax
@@ -7,12 +9,14 @@ jax.config.update("jax_enable_x64", True)
 
 
 def _init_x(key, batch_size, n, dtype):
+    """Create normalized random vectors for batched power iterations."""
     keys = jax.random.split(key, batch_size)
     x = jax.vmap(lambda k: jax.random.normal(k, (n,), dtype=dtype))(keys)
     return x / (jnp.linalg.norm(x, axis=1, keepdims=True) + 1e-12)
 
 
 def canonicalize_constraints(Q_diag, A, b, C, d):
+    """Replace missing equality or inequality systems with empty arrays."""
     Q_diag = jnp.asarray(Q_diag)
     B, n = Q_diag.shape
     dtype = Q_diag.dtype
@@ -35,6 +39,7 @@ def canonicalize_constraints(Q_diag, A, b, C, d):
 
 
 def estimate_AC_norm(A, C, key, *, iters: int = 50):
+    """Estimate ``||[A; C]||`` with batched power iterations."""
     A = jnp.asarray(A)
     C = jnp.asarray(C)
     B = A.shape[0]
@@ -59,12 +64,14 @@ def estimate_AC_norm(A, C, key, *, iters: int = 50):
 
 
 def _safe_max_abs_rows(mat):
+    """Return max row magnitudes while handling empty constraint blocks."""
     if mat.shape[1] == 0:
         return jnp.zeros((mat.shape[0], 0), dtype=mat.dtype)
     return jnp.max(jnp.abs(mat), axis=2)
 
 
 def _safe_max_abs_cols(mat):
+    """Return max column magnitudes while handling empty constraint blocks."""
     if mat.shape[1] == 0:
         return jnp.zeros((mat.shape[0], mat.shape[2]), dtype=mat.dtype)
     return jnp.max(jnp.abs(mat), axis=1)
@@ -83,6 +90,7 @@ def ruiz_equilibrate(
     iterations: int = 4,
     eps: float = 1e-6,
 ):
+    """Apply batched Ruiz equilibration to a projected QP instance."""
     Q_diag = jnp.asarray(Q_diag)
     c = jnp.asarray(c)
     A = jnp.asarray(A)
@@ -152,6 +160,7 @@ def ruiz_equilibrate(
 
 
 def _primal_residual(y, A, b, C, d, l, u):
+    """Compute the batched infinity-norm primal residual."""
     B = y.shape[0]
     dtype = y.dtype
     eq_inf = jnp.zeros((B,), dtype=dtype)
@@ -169,6 +178,7 @@ def _primal_residual(y, A, b, C, d, l, u):
 
 
 def _primal_dual_gap(Q_diag, c, A, b, C, d, l, u, y, lam, mu):
+    """Compute a scaled batched primal-dual gap."""
     primal = 0.5 * jnp.sum(Q_diag * (y ** 2), axis=1) + jnp.sum(c * y, axis=1)
 
     t = c
@@ -193,6 +203,7 @@ def _primal_dual_gap(Q_diag, c, A, b, C, d, l, u, y, lam, mu):
 
 
 def _prepare_scaled_problem(Q_diag, c, A, b, C, d, l, u, *, use_ruiz, ruiz_iters):
+    """Optionally scale the problem and return scaling factors."""
     if not use_ruiz:
         B, n = Q_diag.shape
         me = A.shape[1]
@@ -236,6 +247,7 @@ def CP_fixed(
     use_ruiz: bool = False,
     ruiz_iters: int = 4,
 ):
+    """Solve the projected QP with fixed CP step sizes."""
     Q_diag = jnp.asarray(Q_diag)
     c = jnp.asarray(c)
     A = jnp.asarray(A)
@@ -367,6 +379,7 @@ def CP_accelerated(
     use_ruiz: bool = False,
     ruiz_iters: int = 4,
 ):
+    """Solve the projected QP with accelerated CP step sizes when possible."""
     Q_diag = jnp.asarray(Q_diag)
     c = jnp.asarray(c)
     A = jnp.asarray(A)

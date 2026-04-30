@@ -1,3 +1,5 @@
+"""Public exports for the optimization and projection backend layer."""
+
 from .CP_jax import CP_accelerated, CP_accelerated_jit, CP_fixed, CP_fixed_jit
 from .model_bridge import (
     extract_projection_subproblem,

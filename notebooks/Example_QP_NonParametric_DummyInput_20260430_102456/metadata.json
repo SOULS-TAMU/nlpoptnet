@@ -1,0 +1,315 @@
+{
+  "artifacts": {
+    "backbone_weights": "backbone_weights.npz",
+    "constants": "problem_constants.npz",
+    "history": "history.csv",
+    "native_projection": "native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so",
+    "native_projection_manifest": "projection_native.json",
+    "parameters": "parameters.csv",
+    "predicted_variables": "predicted_variables.csv",
+    "problem_npz": null,
+    "summary": "summary.json",
+    "weights": "model_weights.npz"
+  },
+  "backbone": {
+    "activation": "tanh",
+    "dtype": "float64",
+    "format": "nlpoptnet-backbone-v1",
+    "hidden_dim": 2,
+    "hidden_size": 64,
+    "me": 5,
+    "mi": 5,
+    "n": 10,
+    "p": 5
+  },
+  "config": {
+    "IS_FIXED": true,
+    "adjoint_iters": 20,
+    "alpha_consistency": 10.0,
+    "batch_size": 32,
+    "cp_iters": 300,
+    "cp_mode": "fixed",
+    "cp_tol": 1e-09,
+    "device": "auto",
+    "dtype": "float64",
+    "epochs": 100,
+    "hidden_dim": 2,
+    "hidden_layers": 2,
+    "hidden_size": 64,
+    "jit_warmup": true,
+    "k_layer": 1,
+    "knorm_iters": 15,
+    "knorm_seed": 42,
+    "learning_rate": 0.001,
+    "native_projection": true,
+    "num_samples": 1000,
+    "ruiz_iters": 5,
+    "safety": 0.95,
+    "seed": 42,
+    "stepsize": "auto",
+    "train_frac": 0.8,
+    "use_ruiz": true,
+    "verbose": true
+  },
+  "created_at": "20260430_102456",
+  "format": "nlpoptnet-metadata-v1",
+  "model_name": "Example_QP_NonParametric_DummyInput",
+  "native_projection": {
+    "artifacts": {
+      "linux-x86_64": {
+        "command": [
+          "cc",
+          "-O3",
+          "-std=c99",
+          "-fPIC",
+          "-shared",
+          "/tmp/nlpoptnet_native_r06p2jvn/projection_native.c",
+          "-lm",
+          "-o",
+          "/mnt/research/Hasan_Faruque/Shared/NLPOptNet/notebooks/Example_QP_NonParametric_DummyInput_20260430_102456/native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so"
+        ],
+        "compiler": "cc",
+        "machine": "x86_64",
+        "platform": "Linux",
+        "platform_tag": "linux-x86_64",
+        "returncode": 0,
+        "shared_library": "native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so",
+        "source": null,
+        "source_stored": false,
+        "source_version": "cp-sequential-20260422",
+        "status": "ok",
+        "stderr": "",
+        "stdout": ""
+      }
+    },
+    "batch_mode": "sequential",
+    "cache_scope": "run",
+    "command": [
+      "cc",
+      "-O3",
+      "-std=c99",
+      "-fPIC",
+      "-shared",
+      "/tmp/nlpoptnet_native_r06p2jvn/projection_native.c",
+      "-lm",
+      "-o",
+      "/mnt/research/Hasan_Faruque/Shared/NLPOptNet/notebooks/Example_QP_NonParametric_DummyInput_20260430_102456/native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so"
+    ],
+    "compiler": "cc",
+    "format": "nlpoptnet-native-projection-v2",
+    "machine": "x86_64",
+    "platform": "Linux",
+    "platform_tag": "linux-x86_64",
+    "returncode": 0,
+    "shared_library": "native_projection/cp-sequential-20260422/linux-x86_64/projection_native.so",
+    "source": null,
+    "source_stored": false,
+    "source_version": "cp-sequential-20260422",
+    "status": "ok",
+    "stderr": "",
+    "stdout": ""
+  },
+  "problem": {
+    "bounds": {
+      "lower_M": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "lower_c": [
+        -1.05,
+        -1.4,
+        -1.15,
+        -1.3,
+        -1.13,
+        -0.95,
+        -1.5,
+        -1.07,
+        -1.35,
+        -1.2
+      ],
+      "upper_M": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "upper_c": [
+        1.45,
+        1.1,
+        1.35,
+        1.2,
+        1.37,
+        1.55,
+        1.0,
+        1.43,
+        1.15,
+        1.3
+      ]
+    },
+    "equality_texts": [
+      "lin(_const_2, y) == _const_3"
+    ],
+    "has_callable_blocks": false,
+    "has_callable_objective": false,
+    "inequality_texts": [
+      "lin(_const_4, y) <= _const_5"
+    ],
+    "objective_text": "((quad(_const_0, y) * 0.5) + lin(_const_1, y))",
+    "parameter_names": [
+      "x_dummy1",
+      "x_dummy2",
+      "x_dummy3",
+      "x_dummy4",
+      "x_dummy5"
+    ],
+    "serializable": true,
+    "variable_names": [
+      "y1",
+      "y2",
+      "y3",
+      "y4",
+      "y5",
+      "y6",
+      "y7",
+      "y8",
+      "y9",
+      "y10"
+    ]
+  },
+  "problem_type": "qp",
+  "version": "0.2.0"
+}

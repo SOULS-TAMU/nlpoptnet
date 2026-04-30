@@ -1,0 +1,209 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>opt.training.config &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../citations.html">Citations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">opt.training.config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for opt.training.config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Training-configuration dataclasses and normalization helpers.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+
+
+<div class="viewcode-block" id="TrainConfig">
+<a class="viewcode-back" href="../../../api/package/hyperparameters.html#opt.training.config.TrainConfig">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Typed training and projection hyperparameters.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    batch_size:</span>
+<span class="sd">        Mini-batch size used for train and validation updates.</span>
+<span class="sd">    epochs:</span>
+<span class="sd">        Number of optimization epochs.</span>
+<span class="sd">    learning_rate:</span>
+<span class="sd">        Adam learning rate for the neural backbone.</span>
+<span class="sd">    alpha_consistency:</span>
+<span class="sd">        Weight applied to the projection-consistency penalty.</span>
+<span class="sd">    train_frac, val_frac:</span>
+<span class="sd">        Fractions used when splitting parameter samples.</span>
+<span class="sd">    hidden_size, hidden_dim:</span>
+<span class="sd">        Backbone width and number of hidden layers.</span>
+<span class="sd">    cp_iters, cp_tol, cp_mode:</span>
+<span class="sd">        Projection-operator iteration budget, tolerance, and mode.</span>
+<span class="sd">    safety, knorm_iters, knorm_seed:</span>
+<span class="sd">        Step-size and operator-norm estimation controls.</span>
+<span class="sd">    adjoint_iters:</span>
+<span class="sd">        Iteration budget used in implicit differentiation.</span>
+<span class="sd">    use_ruiz, ruiz_iters:</span>
+<span class="sd">        Controls for Ruiz equilibration.</span>
+<span class="sd">    k_layer:</span>
+<span class="sd">        Number of projection layers to apply after the backbone.</span>
+<span class="sd">    dtype, device, jit_warmup:</span>
+<span class="sd">        Numeric precision and execution settings.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The projection-oriented part of the training loop can be viewed as</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        (\hat y, \hat \lambda, \hat \mu) = \Phi_\theta(x), \qquad</span>
+<span class="sd">        (y^\star, \lambda^\star, \mu^\star) = \Pi(\hat y, \hat \lambda, \hat \mu; x),</span>
+
+<span class="sd">    where ``k_layer``, ``cp_mode``, ``cp_iters``, ``cp_tol``, ``safety``, and</span>
+<span class="sd">    the Ruiz-scaling options control the projection operator :math:`\Pi`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">alpha_consistency</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span>
+    <span class="n">train_frac</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>
+    <span class="n">val_frac</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span>
+    <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">cp_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">cp_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-9</span>
+    <span class="n">cp_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fixed&quot;</span>
+    <span class="n">IS_FIXED</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">stepsize</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>
+    <span class="n">safety</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
+    <span class="n">knorm_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">knorm_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span>
+    <span class="n">adjoint_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">use_ruiz</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">ruiz_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">k_layer</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;float64&quot;</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>
+    <span class="n">jit_warmup</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="cfg_from_dict">
+<a class="viewcode-back" href="../../../api/package/hyperparameters.html#opt.training.config.cfg_from_dict">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cfg_from_dict</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">TrainConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a config dictionary into a validated :class:`TrainConfig`.&quot;&quot;&quot;</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">asdict</span><span class="p">(</span><span class="n">TrainConfig</span><span class="p">())</span>
+    <span class="n">base</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;cp_mode&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;cp_mode&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;fixed&quot;</span><span class="p">,</span> <span class="s2">&quot;accelerated&quot;</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;cp_mode must be either &#39;fixed&#39; or &#39;accelerated&#39;.&quot;</span><span class="p">)</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;cp_mode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;IS_FIXED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;fixed&quot;</span>
+    <span class="k">elif</span> <span class="s2">&quot;IS_FIXED&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;IS_FIXED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;IS_FIXED&quot;</span><span class="p">])</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;cp_mode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;fixed&quot;</span> <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;IS_FIXED&quot;</span><span class="p">])</span> <span class="k">else</span> <span class="s2">&quot;accelerated&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;use_ruiz&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;use_ruiz&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;use_ruiz&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">&quot;k_layer&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+        <span class="n">base</span><span class="p">[</span><span class="s2">&quot;k_layer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;k_layer&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s2">&quot;k_layer&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;k_layer must be at least 1.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">TrainConfig</span><span class="p">(</span><span class="o">**</span><span class="n">base</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

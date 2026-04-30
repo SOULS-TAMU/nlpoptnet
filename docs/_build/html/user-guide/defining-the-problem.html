@@ -1,0 +1,316 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Defining the Problem &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=8110c214" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Defining Parameter Space" href="defining-parameter-space.html" />
+    <link rel="prev" title="Configuration Options" href="configuration-options.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">User Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="configuration-options.html">Configuration Options</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Defining the Problem</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#creating-the-model-object">Creating the Model Object</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-the-variables-and-parameters">Defining the Variables and Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extracting-model-constants-from-previously-saved-files">Extracting Model Constants from Previously Saved Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-model-constants-directly">Defining Model Constants Directly</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-the-objective">Defining the Objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-constraints">Defining Constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#defining-box-bounding-constraints">Defining Box/Bounding Constraints</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="defining-parameter-space.html">Defining Parameter Space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training-and-inference.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../citations.html">Citations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">User Guide</a></li>
+      <li class="breadcrumb-item active">Defining the Problem</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/SOULS-TAMU/NLPOpt-Net/blob/main/docs/user-guide/defining-the-problem.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="defining-the-problem">
+<h1>Defining the Problem<a class="headerlink" href="#defining-the-problem" title="Link to this heading"></a></h1>
+<p>This notebook provides the way of defining the model in NLPOpt-Net. You can define block of constraints when you have exploitable structure and also can define explicit constraitns. Along with objective and constraints this notebook provides the method of defining variable bounds that can be parameter independent or parameter dependent. We consider the general form of the problem as follows:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+\min_y &amp;\,\, f(x,y)\\
+\textrm{s.t.} &amp;\, \, g(x,y) \leq 0 \\
+&amp;\, \, h(x,y) = 0 \\
+&amp;\, \, l(x) \leq y \leq u(x)
+\end{aligned}\end{split}\]</div>
+<p>The general workflow for defining a model in NLPOpt-Net is as follows:</p>
+<ul class="simple">
+<li><p>Configure training settings</p></li>
+<li><p>Create a <code class="docutils literal notranslate"><span class="pre">NLPOptNet</span></code> object</p></li>
+<li><p>Define the variables and parameters</p></li>
+<li><p>Define the objective, constraints, variable bounds</p></li>
+<li><p>Define parameter space</p></li>
+<li><p>Build the model</p></li>
+<li><p>Train and infer</p></li>
+</ul>
+<section id="creating-the-model-object">
+<h2>Creating the Model Object<a class="headerlink" href="#creating-the-model-object" title="Link to this heading"></a></h2>
+<p>Ensure that all required configuration fields are provided. Optional parameters can be specified based on user preference. In this example we only provide the required configuration fields.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nlpoptnet</span><span class="w"> </span><span class="kn">import</span> <span class="n">NLPOptNet</span>
+
+<span class="n">CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+    <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="s1">&#39;hidden_size&#39;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="s1">&#39;hidden_layers&#39;</span><span class="p">:</span> <span class="mi">2</span>
+<span class="p">}</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">NLPOptNet</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">CONFIG</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Example_Model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="defining-the-variables-and-parameters">
+<h2>Defining the Variables and Parameters<a class="headerlink" href="#defining-the-variables-and-parameters" title="Link to this heading"></a></h2>
+<p>You can define the parameter and variable names explicitly or by providing a list of strings.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>parameter_set = model.add_parameter([parameter_1, parameter_2, ...])
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">parameter_set</span></code>: handle to the defined parameters</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parameter_i</span></code>: user-defined string identifiers (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;temperature&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;pressure&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;x1&quot;</span></code>,…)</p></li>
+</ul>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>variable_set = model.add_variable([variable_1, variable_2, ...])
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">variable_set</span></code>: handle to the defined variables</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">variable_i</span></code>: user-defined string identifiers (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;flow&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;y1&quot;</span></code>, …)</p></li>
+</ul>
+<p>It is convenient to define explicitely when system has few parameters and variables.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">add_parameter</span><span class="p">([</span><span class="s1">&#39;x1&#39;</span><span class="p">,</span> <span class="s1">&#39;x2&#39;</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">add_variable</span><span class="p">([</span><span class="s1">&#39;y1&#39;</span><span class="p">,</span> <span class="s1">&#39;y2&#39;</span><span class="p">,</span> <span class="s1">&#39;y3&#39;</span><span class="p">,</span> <span class="s1">&#39;y4&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>For a large number of parameters and variables you may consider the following:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">no_of_parameters</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">no_of_variables</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">parameter_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;x</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">no_of_parameters</span><span class="p">)]</span>
+<span class="n">variable_names</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;y</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">no_of_variables</span><span class="p">)]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">add_parameter</span><span class="p">(</span><span class="n">parameter_names</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">add_variable</span><span class="p">(</span><span class="n">variable_names</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="extracting-model-constants-from-previously-saved-files">
+<h2>Extracting Model Constants from Previously Saved Files<a class="headerlink" href="#extracting-model-constants-from-previously-saved-files" title="Link to this heading"></a></h2>
+<p>Currently we support loading arrays from a <code class="docutils literal notranslate"><span class="pre">.npz</span></code> file. The model will automatically resgister the contained arrays as model constants.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">DATA_DIRECTORY</span> <span class="o">/</span> <span class="s1">&#39;problem.npz&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will load all arrays stored in <code class="docutils literal notranslate"><span class="pre">problem.npz</span></code>. The following is an example of the output:</p>
+<p>Loaded problem constants: [‘A’, ‘B’, ‘C’, ‘L’, ‘Q’, ‘U’, ‘b’, ‘c’, ‘d’, ‘l’, ‘u’]</p>
+<p>User can use them by calling <code class="docutils literal notranslate"><span class="pre">model.A</span></code>, <code class="docutils literal notranslate"><span class="pre">model.B</span></code>, …</p>
+</section>
+<section id="defining-model-constants-directly">
+<h2>Defining Model Constants Directly<a class="headerlink" href="#defining-model-constants-directly" title="Link to this heading"></a></h2>
+<p>Model constants (arrays) can be added directly using the provided APIs. The following examples illustrate how to define matrices, vectors, and tensors:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Matrix (2D array)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">matrix</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]])</span>
+<span class="n">model</span><span class="o">.</span><span class="n">A</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">matrix</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]])</span>
+
+<span class="c1"># Vector (1D array)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">vector</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>
+
+<span class="c1"># Tensor (multi-dimensional array)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]],</span>
+    <span class="p">[[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]]</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Model constants can be accessed directly as attributes (e.g., <code class="docutils literal notranslate"><span class="pre">model.Q</span></code>). To view their values, use <code class="docutils literal notranslate"><span class="pre">model.Q.value</span></code> or convert to a NumPy array using <code class="docutils literal notranslate"><span class="pre">np.array(model.Q)</span></code>.</p>
+</section>
+<section id="defining-the-objective">
+<h2>Defining the Objective<a class="headerlink" href="#defining-the-objective" title="Link to this heading"></a></h2>
+<p>The objective can be defined using built-in structured functions or explicitly using expressions. NLPOpt-Net provides several built-in functions to construct structured objectives:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Matrix operations</span>
+<span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>        <span class="c1"># Linear: A @ y</span>
+<span class="n">model</span><span class="o">.</span><span class="n">quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>       <span class="c1"># Quadratic: y^T Q y</span>
+<span class="n">model</span><span class="o">.</span><span class="n">batch_lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>  <span class="c1"># Batched linear mapping</span>
+<span class="n">model</span><span class="o">.</span><span class="n">batch_quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="c1"># Batched quadratic form</span>
+
+<span class="c1"># Elementwise nonlinear functions</span>
+<span class="n">model</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>        <span class="c1"># Sine</span>
+<span class="n">model</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>        <span class="c1"># Cosine</span>
+<span class="n">model</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>        <span class="c1"># Exponential</span>
+<span class="n">model</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>        <span class="c1"># Logarithm</span>
+<span class="n">model</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>       <span class="c1"># Square root</span>
+<span class="n">model</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>        <span class="c1"># Absolute value</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quadratic objective function</span>
+<span class="n">model</span><span class="o">.</span><span class="n">objective</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">c</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Nonlinear bbjective function</span>
+<span class="n">model</span><span class="o">.</span><span class="n">objective</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">model</span><span class="o">.</span><span class="n">quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>          <span class="c1"># 0.5 y^T Q y</span>
+                <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">c</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>               <span class="c1"># c^T y</span>
+                <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">p</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>    <span class="c1"># p^T exp(y)</span>
+                <span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Explicit expression</span>
+<span class="n">model</span><span class="o">.</span><span class="n">objective</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">3</span><span class="o">*</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>Note that parameters can also be included in the objective in similar way.</p>
+</section>
+<section id="defining-constraints">
+<h2>Defining Constraints<a class="headerlink" href="#defining-constraints" title="Link to this heading"></a></h2>
+<p>Similar to the objective, constraints can be defined using structured functions or explicit expressions.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Linear constraints</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">equality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">==</span> <span class="n">model</span><span class="o">.</span><span class="n">b</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">B</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">inequality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">d</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">D</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quadratic constraints</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">inequality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">batch_quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">batch_lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">e</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">batch_lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Nonlinear constraints</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">inequality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">batch_quad</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">C</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">batch_lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">model</span><span class="o">.</span><span class="n">e</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">batch_lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Explicit expression as constraints</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">equality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">y1</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">y2</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">x1</span><span class="p">,</span>
+                               <span class="n">y</span><span class="o">.</span><span class="n">y2</span> <span class="o">-</span> <span class="n">y</span><span class="o">.</span><span class="n">y3</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">x2</span><span class="p">)</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">inequality</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">y1</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">y3</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">&lt;=</span> <span class="mf">2.0</span><span class="p">,</span>
+                                 <span class="n">y</span><span class="o">.</span><span class="n">y1</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">y2</span> <span class="o">&lt;=</span> <span class="mf">1.5</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="defining-box-bounding-constraints">
+<h2>Defining Box/Bounding Constraints<a class="headerlink" href="#defining-box-bounding-constraints" title="Link to this heading"></a></h2>
+<p>Box constraints define lower and upper bounds on the decision variables. Bounds may be parameterized or some decision variable may be unbounded.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Parameterized bounds</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+                          <span class="n">lower</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">l</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">L</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span>
+                          <span class="n">upper</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">u</span> <span class="o">+</span> <span class="n">model</span><span class="o">.</span><span class="n">lin</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">U</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Non-parameterized bounds</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">l</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If only a lower or upper bound is available, provide only that bound. If a variable has no lower or upper bound, leave it unbounded by not specifying a bound for that variable. For vector bounds, use <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">-np.inf</span></code>, or <code class="docutils literal notranslate"><span class="pre">np.inf</span></code> depending on how the bound data is represented. If the variables are unbounded do not call <code class="docutils literal notranslate"><span class="pre">.constraints.box.add</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Lower bound only</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">l</span><span class="p">)</span>
+
+<span class="c1"># Upper bound only</span>
+<span class="n">model</span><span class="o">.</span><span class="n">constraints</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="n">y</span><span class="p">,</span><span class="n">upper</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">u</span><span class="p">)</span>
+
+<span class="c1"># Example: y[0] has bounds, y[1] is unbounded</span>
+<span class="n">l</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">])</span>
+<span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span>  <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>After defining the objective, constraints, and bounds, the next step is to specify the parameter space.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration-options.html" class="btn btn-neutral float-left" title="Configuration Options" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="defining-parameter-space.html" class="btn btn-neutral float-right" title="Defining Parameter Space" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+"""Artifact helpers for exporting backbone weights and derivative evaluators."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,7 @@ import numpy as np
 
 
 def _dense_key(index: int) -> str:
+    """Return the Flax parameter-tree key for a dense layer index."""
     return f"Dense_{index}"
 
 
@@ -25,7 +28,7 @@ def save_backbone_npz(
     hidden_dim: int,
     dtype: str,
 ) -> dict[str, Any]:
-    """Save Flax Dense weights as a plain, pickle-free NPZ artifact."""
+    """Save Flax dense weights as a plain, pickle-free ``.npz`` artifact."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     arrays: dict[str, np.ndarray] = {}
@@ -76,6 +79,7 @@ def save_backbone_npz(
 
 
 def load_backbone_npz(path: str | Path) -> dict[str, Any]:
+    """Load a backbone artifact created by :func:`save_backbone_npz`."""
     source = Path(path)
     loaded = np.load(source, allow_pickle=False)
     metadata = json.loads(str(loaded["metadata_json"].item()))
@@ -84,6 +88,7 @@ def load_backbone_npz(path: str | Path) -> dict[str, Any]:
 
 
 def backbone_forward_numpy(artifact: dict[str, Any], x_values: np.ndarray):
+    """Run the saved backbone in NumPy without requiring Flax at inference time."""
     metadata = artifact["metadata"]
     arrays = artifact["arrays"]
     x = np.asarray(x_values, dtype=np.float64)
@@ -99,6 +104,7 @@ def backbone_forward_numpy(artifact: dict[str, Any], x_values: np.ndarray):
 
 
 def _export_one(name: str, fn, specs: tuple[Any, ...], out_dir: Path) -> dict[str, Any]:
+    """Export one JAX function to a serialized StableHLO artifact."""
     from jax import export
 
     exported = export.export(jax.jit(fn))(*specs)
@@ -137,7 +143,7 @@ def export_projection_derivatives(
     dtype,
     param_name: str = "x",
 ) -> dict[str, Any]:
-    """Persist StableHLO derivative evaluators for archival/reuse."""
+    """Persist StableHLO derivative evaluators for archival and reuse."""
     target = Path(out_dir)
     target.mkdir(parents=True, exist_ok=True)
     x_spec = jax.ShapeDtypeStruct((int(p),), dtype)

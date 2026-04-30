@@ -1,3 +1,5 @@
+"""Training helpers exported by the optimization backend layer."""
+
 from .config import TrainConfig, cfg_from_dict
 from .jaxmodel_pipeline import (
     apply_projection_layers,

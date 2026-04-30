@@ -1,20 +1,33 @@
+"""Native sequential projection backend and compilation helpers."""
+
 from __future__ import annotations
 
 import ctypes
 import json
+import os
+import platform
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 
+_NATIVE_FORMAT = "nlpoptnet-native-projection-v2"
+_SOURCE_VERSION = "cp-sequential-20260422"
 _C_SOURCE = r"""
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define NLPOPTNET_EXPORT __declspec(dllexport)
+#else
+#define NLPOPTNET_EXPORT
+#endif
 
 static double max2(double a, double b) { return a > b ? a : b; }
 static double min2(double a, double b) { return a < b ? a : b; }
@@ -285,7 +298,7 @@ static int solve_one(
     return 0;
 }
 
-int nlpoptnet_cp_solve(
+NLPOPTNET_EXPORT int nlpoptnet_cp_solve(
     int B, int n, int me, int mi,
     const double *Q, const double *c, const double *A, const double *b,
     const double *C, const double *d, const double *l, const double *u,
@@ -321,8 +334,11 @@ int nlpoptnet_cp_solve(
 
 
 class NativeProjection:
+    """ctypes wrapper around the compiled native CP projection library."""
+
     def __init__(self, shared_library: str | Path):
-        self.path = Path(shared_library)
+        """Load a shared library that exposes ``nlpoptnet_cp_solve``."""
+        self.path = Path(shared_library).expanduser().resolve()
         self.lib = ctypes.CDLL(str(self.path))
         ptr = ctypes.POINTER(ctypes.c_double)
         self._solve = self.lib.nlpoptnet_cp_solve
@@ -358,6 +374,7 @@ class NativeProjection:
 
     @staticmethod
     def _array(value, shape: tuple[int, ...]) -> np.ndarray:
+        """Convert input to a contiguous float64 array with a fixed shape."""
         arr = np.ascontiguousarray(np.asarray(value, dtype=np.float64))
         if arr.shape != shape:
             raise ValueError(f"Expected array shape {shape}, got {arr.shape}.")
@@ -379,6 +396,7 @@ class NativeProjection:
         *,
         cfg,
     ):
+        """Solve a batched projection problem with the native backend."""
         Q_diag = np.ascontiguousarray(np.asarray(Q_diag, dtype=np.float64))
         if Q_diag.ndim != 2:
             raise ValueError("Q_diag must have shape (batch, n).")
@@ -436,35 +454,378 @@ class NativeProjection:
         return y_out, lam_out, mu_out
 
 
-def compile_native_projection(run_dir: str | Path, *, cc: str | None = None) -> dict[str, Any]:
+def _platform_tag() -> str:
+    """Return a platform tag used for caching compiled libraries."""
+    system = platform.system().lower() or "unknown"
+    machine = platform.machine().lower() or "unknown"
+    return f"{system}-{machine}"
+
+
+def _shared_library_name() -> str:
+    """Return the platform-specific shared library filename."""
+    system = platform.system().lower()
+    if system == "windows":
+        return "projection_native.dll"
+    if system == "darwin":
+        return "projection_native.dylib"
+    return "projection_native.so"
+
+
+def _native_cache_root() -> Path:
+    """Return the root directory used to cache native projection binaries."""
+    override = os.environ.get("NLPOPTNET_NATIVE_CACHE_DIR")
+    if override:
+        return Path(override).expanduser()
+    system = platform.system().lower()
+    if system == "windows":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("TEMP") or str(Path.home())
+        return Path(base) / "nlpoptnet" / "native_projection"
+    if system == "darwin":
+        return Path.home() / "Library" / "Caches" / "nlpoptnet" / "native_projection"
+    base = os.environ.get("XDG_CACHE_HOME")
+    if base:
+        return Path(base) / "nlpoptnet" / "native_projection"
+    return Path.home() / ".cache" / "nlpoptnet" / "native_projection"
+
+
+def _native_cache_dir() -> Path:
+    """Return the legacy versioned cache directory for older run manifests."""
+    return _native_cache_root() / _SOURCE_VERSION / _platform_tag()
+
+
+def _native_artifact_dir(run_dir: str | Path, *, platform_tag: str | None = None) -> Path:
+    """Return the run-local directory used to store native projection binaries."""
+    tag = str(platform_tag or _platform_tag())
+    return Path(run_dir) / "native_projection" / _SOURCE_VERSION / tag
+
+
+def _native_library_path(run_dir: str | Path, *, platform_tag: str | None = None) -> Path:
+    """Return the run-local shared library path for the current platform."""
+    return _native_artifact_dir(run_dir, platform_tag=platform_tag) / _shared_library_name()
+
+
+def _compiler_candidates(explicit: str | None = None) -> list[str]:
+    """Return candidate C compilers to try for native compilation."""
+    if explicit is not None:
+        return [explicit]
+    candidates: list[str] = []
+    env_cc = os.environ.get("CC")
+    if env_cc:
+        candidates.append(env_cc)
+    if platform.system().lower() == "windows":
+        candidates.extend(["cl", "gcc", "clang"])
+    else:
+        candidates.extend(["cc", "gcc", "clang"])
+    out: list[str] = []
+    for candidate in candidates:
+        if candidate in out:
+            continue
+        if Path(candidate).is_absolute() or shutil.which(candidate) is not None:
+            out.append(candidate)
+    return out
+
+
+def _compile_command(compiler: str, source: Path, shared: Path) -> list[str]:
+    """Build the platform-specific compile command."""
+    system = platform.system().lower()
+    compiler_name = Path(compiler).name.lower()
+    if system == "windows" and compiler_name in {"cl", "cl.exe"}:
+        return [compiler, "/O2", "/LD", str(source), f"/Fe:{shared}"]
+    if system == "darwin":
+        return [compiler, "-O3", "-std=c99", "-fPIC", "-dynamiclib", str(source), "-lm", "-o", str(shared)]
+    return [compiler, "-O3", "-std=c99", "-fPIC", "-shared", str(source), "-lm", "-o", str(shared)]
+
+
+def _platform_payload(
+    *,
+    source: str | None = None,
+    shared_library: str | None = None,
+    status: str,
+    compiler: str | None = None,
+    command: list[str] | None = None,
+    returncode: int | None = None,
+    stdout: str | None = None,
+    stderr: str | None = None,
+) -> dict[str, Any]:
+    """Create a normalized payload for one platform-specific native artifact."""
+    return {
+        "source_version": _SOURCE_VERSION,
+        "source": source,
+        "source_stored": False,
+        "shared_library": shared_library,
+        "platform": platform.system(),
+        "machine": platform.machine(),
+        "platform_tag": _platform_tag(),
+        "compiler": compiler,
+        "command": command,
+        "returncode": returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "status": status,
+    }
+
+
+def _manifest_payload(
+    *,
+    current: dict[str, Any],
+    artifacts: dict[str, dict[str, Any]] | None = None,
+    message: str | None = None,
+) -> dict[str, Any]:
+    """Create a normalized manifest payload for native compilation state."""
+    platform_tag = str(current.get("platform_tag", _platform_tag()))
+    stored_artifacts = {
+        str(tag): dict(entry)
+        for tag, entry in (artifacts or {}).items()
+        if isinstance(entry, dict)
+    }
+    stored_artifacts[platform_tag] = dict(current)
+    payload = {
+        "format": _NATIVE_FORMAT,
+        "source_version": _SOURCE_VERSION,
+        "source": current.get("source"),
+        "source_stored": bool(current.get("source_stored", False)),
+        "shared_library": current.get("shared_library"),
+        "cache_scope": "run",
+        "platform": current.get("platform"),
+        "machine": current.get("machine"),
+        "platform_tag": platform_tag,
+        "batch_mode": "sequential",
+        "compiler": current.get("compiler"),
+        "command": current.get("command"),
+        "returncode": current.get("returncode"),
+        "stdout": current.get("stdout"),
+        "stderr": current.get("stderr"),
+        "status": current.get("status"),
+        "artifacts": stored_artifacts,
+    }
+    if message is not None:
+        payload["message"] = message
+    return payload
+
+
+def _read_manifest(path: Path) -> dict[str, Any] | None:
+    """Load a compilation manifest if it exists and is valid JSON."""
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _artifact_entries(payload: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Return platform-specific artifact entries from current or legacy manifests."""
+    if payload is None:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    artifacts = payload.get("artifacts")
+    if isinstance(artifacts, dict):
+        for tag, entry in artifacts.items():
+            if not isinstance(entry, dict):
+                continue
+            normalized = dict(entry)
+            normalized.setdefault("platform_tag", str(tag))
+            normalized.setdefault("source_version", payload.get("source_version", _SOURCE_VERSION))
+            out[str(normalized["platform_tag"])] = normalized
+    legacy_tag = payload.get("platform_tag")
+    if legacy_tag is not None and str(legacy_tag) not in out:
+        legacy_entry = {
+            key: payload.get(key)
+            for key in (
+                "source_version",
+                "source",
+                "source_stored",
+                "shared_library",
+                "platform",
+                "machine",
+                "platform_tag",
+                "compiler",
+                "command",
+                "returncode",
+                "stdout",
+                "stderr",
+                "status",
+            )
+            if key in payload
+        }
+        legacy_entry.setdefault("source_version", payload.get("source_version", _SOURCE_VERSION))
+        legacy_entry.setdefault("platform_tag", str(legacy_tag))
+        out[str(legacy_tag)] = legacy_entry
+    return out
+
+
+def _resolve_entry_shared_library(entry: dict[str, Any] | None, run_dir: Path) -> Path | None:
+    """Resolve a shared library path for one platform entry."""
+    if entry is None:
+        return None
+    if entry.get("status") != "ok":
+        return None
+    if entry.get("source_version") != _SOURCE_VERSION:
+        return None
+    shared_library = entry.get("shared_library")
+    if not shared_library:
+        return None
+
+    candidate = Path(str(shared_library)).expanduser()
+    if candidate.is_absolute() and candidate.exists():
+        return candidate
+
+    run_local = run_dir / candidate
+    if run_local.exists():
+        return run_local
+
+    legacy_relative = run_dir / str(shared_library)
+    if legacy_relative.exists():
+        return legacy_relative
+
+    if entry.get("platform_tag") == _platform_tag():
+        legacy_cached = _native_cache_dir() / candidate.name
+        if legacy_cached.exists():
+            return legacy_cached
+    return None
+
+
+def _is_usable_manifest(payload: dict[str, Any] | None, run_dir: Path) -> bool:
+    """Check whether a manifest points to a compatible shared library."""
+    return _resolve_shared_library(payload, run_dir) is not None
+
+
+def _resolve_shared_library(payload: dict[str, Any] | None, run_dir: Path) -> Path | None:
+    """Resolve the actual shared library path from a manifest payload."""
+    current = _artifact_entries(payload).get(_platform_tag())
+    return _resolve_entry_shared_library(current, run_dir)
+
+
+def _recompile_message(payload: dict[str, Any] | None, run_dir: Path) -> str | None:
+    """Describe why the current system needs a fresh native compilation."""
+    if payload is None:
+        return None
+    artifacts = _artifact_entries(payload)
+    current = artifacts.get(_platform_tag())
+    if current is not None:
+        if current.get("source_version") != _SOURCE_VERSION:
+            return "Native projection artifact is out of date. Compiling for current system."
+        if _resolve_entry_shared_library(current, run_dir) is None:
+            return "Native projection artifact for the current system was not found. Compiling for current system."
+        return None
+    if artifacts:
+        return "Model was trained on a different system. Compiling for current system."
+    return "Native projection artifact was not found. Compiling for current system."
+
+
+def _relative_run_path(path: Path, run_dir: Path) -> str:
+    """Return a manifest-friendly relative path when possible."""
+    try:
+        return path.relative_to(run_dir).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def compile_native_projection(run_dir: str | Path, *, cc: str | None = None, force: bool = False) -> dict[str, Any]:
+    """Compile and store the native projection shared library in the run directory."""
     target = Path(run_dir)
     target.mkdir(parents=True, exist_ok=True)
-    source = target / "projection_native.c"
-    shared = target / "projection_native.so"
     manifest = target / "projection_native.json"
-    source.write_text(_C_SOURCE, encoding="utf-8")
-    compiler = cc or shutil.which("cc") or shutil.which("gcc")
-    payload: dict[str, Any] = {
-        "format": "nlpoptnet-native-projection-v1",
-        "source": source.name,
-        "shared_library": shared.name,
-        "status": "missing-compiler",
-    }
-    if compiler is None:
+    existing = _read_manifest(manifest)
+    if not force and _is_usable_manifest(existing, target):
+        return existing
+
+    artifact_dir = _native_artifact_dir(target)
+    try:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        current = _platform_payload(status="cache-unavailable", stderr=f"{type(exc).__name__}: {exc}")
+        payload = _manifest_payload(
+            current=current,
+            artifacts=_artifact_entries(existing),
+            message=_recompile_message(existing, target),
+        )
         manifest.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return payload
-    cmd = [compiler, "-O3", "-std=c99", "-fPIC", "-shared", str(source.resolve()), "-lm", "-o", str(shared.resolve())]
-    proc = subprocess.run(cmd, cwd=str(target), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-    payload.update(
-        {
-            "compiler": compiler,
-            "command": cmd,
-            "batch_mode": "sequential",
-            "returncode": int(proc.returncode),
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "status": "ok" if proc.returncode == 0 else "compile-failed",
-        }
-    )
+    shared = _native_library_path(target)
+    compilers = _compiler_candidates(cc)
+    if not compilers:
+        current = _platform_payload(status="missing-compiler")
+        payload = _manifest_payload(
+            current=current,
+            artifacts=_artifact_entries(existing),
+            message=_recompile_message(existing, target),
+        )
+        manifest.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return payload
+
+    message = _recompile_message(existing, target)
+    artifacts = _artifact_entries(existing)
+    last_payload: dict[str, Any] | None = None
+    with tempfile.TemporaryDirectory(prefix="nlpoptnet_native_") as tmp:
+        source = Path(tmp) / "projection_native.c"
+        source.write_text(_C_SOURCE, encoding="utf-8")
+        for compiler in compilers:
+            if shared.exists():
+                try:
+                    shared.unlink()
+                except OSError:
+                    pass
+            cmd = _compile_command(compiler, source, shared)
+            try:
+                proc = subprocess.run(cmd, cwd=str(target), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+            except OSError as exc:
+                payload = _platform_payload(
+                    source=None,
+                    status="compile-failed",
+                    compiler=compiler,
+                    command=cmd,
+                    returncode=None,
+                    stdout=None,
+                    stderr=f"{type(exc).__name__}: {exc}",
+                )
+                last_payload = payload
+                continue
+            payload = _platform_payload(
+                source=None,
+                shared_library=_relative_run_path(shared, target) if proc.returncode == 0 and shared.exists() else None,
+                status="ok" if proc.returncode == 0 and shared.exists() else "compile-failed",
+                compiler=compiler,
+                command=cmd,
+                returncode=int(proc.returncode),
+                stdout=proc.stdout,
+                stderr=proc.stderr,
+            )
+            last_payload = payload
+            if payload["status"] == "ok":
+                break
+
+    current = last_payload if last_payload is not None else _platform_payload(status="compile-failed")
+    payload = _manifest_payload(current=current, artifacts=artifacts, message=message)
     manifest.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return payload
+
+
+def load_or_compile_native_projection(run_dir: str | Path) -> tuple[NativeProjection | None, dict[str, Any]]:
+    """Load a usable native projection library or try to compile one."""
+    target = Path(run_dir)
+    manifest_path = target / "projection_native.json"
+    manifest = _read_manifest(manifest_path)
+    if not _is_usable_manifest(manifest, target):
+        manifest = compile_native_projection(target)
+    if _is_usable_manifest(manifest, target):
+        try:
+            shared = _resolve_shared_library(manifest, target)
+            if shared is None:
+                raise FileNotFoundError("Native projection library is not available.")
+            return NativeProjection(shared), manifest
+        except Exception as exc:
+            current = _platform_payload(status="load-failed", stderr=f"{type(exc).__name__}: {exc}")
+            failed = _manifest_payload(
+                current=current,
+                artifacts=_artifact_entries(manifest),
+                message=manifest.get("message") if isinstance(manifest, dict) else None,
+            )
+            manifest_path.write_text(json.dumps(failed, indent=2, sort_keys=True), encoding="utf-8")
+            return None, failed
+    if manifest is not None:
+        return None, manifest
+    missing = _manifest_payload(current=_platform_payload(status="missing"))
+    return None, missing

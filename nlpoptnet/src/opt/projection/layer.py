@@ -1,3 +1,5 @@
+"""Projection-layer runtime that dispatches to implicit CP solvers."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
@@ -28,6 +30,7 @@ def solve_cp_implicit(
     lam0: Optional[Array] = None,
     mu0: Optional[Array] = None,
 ):
+    """Solve a batched projected QP layer using the configured CP variant."""
     Q_diag = jnp.asarray(Q_diag)
     c = jnp.asarray(c)
     A = jnp.asarray(A)

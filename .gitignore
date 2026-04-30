@@ -22,7 +22,7 @@ dist/
 env/
 
 # User-local files
-main.py
-job.slurm
-run.sh
-setup.sh
+prompt.txt
+TESTPYPI_PUBLISH_INSTRUCTIONS.md
+.codex
+Experiments_Article/

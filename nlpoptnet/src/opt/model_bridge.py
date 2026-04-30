@@ -1,3 +1,5 @@
+"""Bridges from jaxmodel approximations to Chambolle-Pock subproblem solves."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +15,8 @@ from .CP_jax import CP_fixed
 
 @dataclass(frozen=True)
 class CPSolveResult:
+    """Hold the result of a projected SQP subproblem solve."""
+
     y: np.ndarray
     lam: np.ndarray
     mu: np.ndarray
@@ -20,6 +24,7 @@ class CPSolveResult:
 
 
 def _default_initial_point(model: JaxNLPModel, params) -> np.ndarray:
+    """Choose a simple feasible-ish initialization from variable bounds."""
     lb = model.lower_bounds(params)
     ub = model.upper_bounds(params)
     n = model.var_spec.total_size
@@ -50,6 +55,7 @@ def extract_sqp_subproblem(
     use_diagonal_hessian: bool = True,
     diag_floor: float = 1e-8,
 ):
+    """Extract local SQP data from a :class:`JaxNLPModel`."""
     y_ref = _default_initial_point(model, params) if y is None else np.asarray(y, dtype=np.float64).reshape((-1,))
     return model.sqp_subproblem_data(
         params,
@@ -73,6 +79,7 @@ def solve_sqp_subproblem_with_cp(
     use_ruiz: bool = True,
     ruiz_iters: int = 4,
 ):
+    """Solve a local SQP subproblem with the fixed-step CP solver."""
     sqp = extract_sqp_subproblem(
         model,
         params,

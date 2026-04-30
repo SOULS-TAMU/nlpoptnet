@@ -1,3 +1,5 @@
+"""Training-pipeline helpers that connect jaxmodel objects to the backbone."""
+
 from __future__ import annotations
 
 from functools import partial
@@ -24,6 +26,7 @@ def make_subproblem_layer_from_model(
     use_diagonal_hessian: bool = True,
     diag_floor: float = 1e-8,
 ):
+    """Create a batched layer that extracts local SQP subproblem data."""
     dtype = model.dtype
     n = model.var_spec.total_size
 
@@ -71,6 +74,7 @@ def make_subproblem_layer_from_model(
 
 
 def make_batched_objective(model: JaxNLPModel, *, param_name: str = "x"):
+    """Vectorize objective evaluation across a batch of parameters and variables."""
     def _single(x: Array, y: Array):
         return model.objective_value({param_name: x}, y)
 
@@ -78,6 +82,7 @@ def make_batched_objective(model: JaxNLPModel, *, param_name: str = "x"):
 
 
 def make_batched_residuals(model: JaxNLPModel, *, param_name: str = "x"):
+    """Vectorize equality and inequality residual evaluation."""
     def _eq_single(x: Array, y: Array):
         return model.eq_residual({param_name: x}, y)
 
@@ -99,6 +104,7 @@ def apply_projection_layers(
     mu0: Array,
     cfg: TrainConfig,
 ):
+    """Apply the learned projection layer repeatedly according to ``cfg.k_layer``."""
     y_curr = y0
     lam_curr = lam0
     mu_curr = mu0
@@ -133,6 +139,7 @@ def build_train_fns_from_jaxmodel(
     use_diagonal_hessian: bool = True,
     diag_floor: float = 1e-8,
 ):
+    """Build the backbone, initialization function, and train/eval steps."""
     example_x = jnp.zeros((p,), dtype=model_def.dtype)
     example_y = jnp.zeros((model_def.var_spec.total_size,), dtype=model_def.dtype)
     me = int(model_def.eq_residual({param_name: example_x}, example_y).shape[0])
@@ -215,6 +222,7 @@ def build_train_fns_from_jaxmodel(
 
 
 def build_violation_fn_from_jaxmodel(model_def: JaxNLPModel, *, cfg: TrainConfig, p: int, param_name: str = "x"):
+    """Build a batched violation-summary function for a trained backbone."""
     example_x = jnp.zeros((p,), dtype=model_def.dtype)
     example_y = jnp.zeros((model_def.var_spec.total_size,), dtype=model_def.dtype)
     me = int(model_def.eq_residual({param_name: example_x}, example_y).shape[0])

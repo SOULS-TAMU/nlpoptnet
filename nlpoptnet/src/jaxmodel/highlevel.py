@@ -1,3 +1,5 @@
+"""High-level symbolic builder for structured parametric optimization models."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,19 +21,42 @@ from .variables import VariableBuilder, VariableSpec
 
 @dataclass
 class _AffineBound:
+    """Store an affine parameter-to-bound mapping for one variable block."""
+
     param_name: str
     M: jnp.ndarray
     c: jnp.ndarray
 
 
 class HighLevelNLPBuilder:
-    """High-level modeling interface built on top of NLPBuilder.
+    r"""High-level modeling interface for parametric nonlinear programs.
 
-    This class keeps the same functionality as the low-level API but provides
-    easier methods for users to define common model structures.
+    This builder assembles problems of the form
+
+    .. math::
+
+        \begin{aligned}
+            \min_y \quad & f(y, x) \\
+            \text{s.t.}\quad & h(y, x) = 0, \\
+            & g(y, x) \le 0, \\
+            & \ell(x) \le y \le u(x),
+        \end{aligned}
+
+    where :math:`x` denotes the parameter vector and :math:`y` denotes the
+    decision variables.
+
+    It provides a more convenient interface than the lower-level
+    :class:`jaxmodel.builder.NLPBuilder` for assembling:
+
+    - parameter blocks,
+    - variable blocks,
+    - objectives,
+    - affine, quadratic, and nonlinear constraints,
+    - affine lower and upper bounds.
     """
 
     def __init__(self, dtype=jnp.float64):
+        """Initialize an empty high-level model builder."""
         self.dtype = dtype
         self._vb = VariableBuilder()
         self._param_sizes: dict[str, int] = {}
@@ -41,16 +66,19 @@ class HighLevelNLPBuilder:
         self._upper_bounds: dict[str, _AffineBound] = {}
 
     def add_variable(self, name: str, size: int) -> "HighLevelNLPBuilder":
+        """Register a named variable block."""
         self._vb.add_vector(name, size)
         return self
 
     def add_parameter(self, name: str, size: int) -> "HighLevelNLPBuilder":
+        """Register a named parameter block."""
         if name in self._param_sizes:
             raise ValueError(f"Parameter '{name}' already exists")
         self._param_sizes[name] = int(size)
         return self
 
     def set_objective(self, objective_fun) -> "HighLevelNLPBuilder":
+        """Set a callable scalar objective."""
         self._objective_fun = objective_fun
         return self
 
@@ -60,6 +88,7 @@ class HighLevelNLPBuilder:
         c: jnp.ndarray,
         constant: float = 0.0,
     ) -> "HighLevelNLPBuilder":
+        """Set a structured quadratic objective."""
         self._objective_fun = QuadraticObjective(Q=Q, c=c, constant=constant)
         return self
 
@@ -72,6 +101,7 @@ class HighLevelNLPBuilder:
         param_terms: Optional[list[tuple[jnp.ndarray, str]]] = None,
         name: str = "affine_eq",
     ) -> "HighLevelNLPBuilder":
+        """Add an affine equality residual block."""
         param_terms = [] if param_terms is None else param_terms
         self._constraints.append(
             ("affine_eq", dict(var_name=var_name, A=A, rhs_const=rhs_const, param_terms=param_terms, name=name))
@@ -87,6 +117,7 @@ class HighLevelNLPBuilder:
         param_terms: Optional[list[tuple[jnp.ndarray, str]]] = None,
         name: str = "affine_ineq",
     ) -> "HighLevelNLPBuilder":
+        """Add an affine inequality residual block."""
         param_terms = [] if param_terms is None else param_terms
         self._constraints.append(
             ("affine_ineq", dict(var_name=var_name, C=C, rhs_const=rhs_const, param_terms=param_terms, name=name))
@@ -98,6 +129,7 @@ class HighLevelNLPBuilder:
         fun: Callable,
         name: str = "nonlinear_eq",
     ) -> "HighLevelNLPBuilder":
+        """Add a nonlinear equality block."""
         self._constraints.append(("eq_block", dict(fun=fun, name=name)))
         return self
 
@@ -106,6 +138,7 @@ class HighLevelNLPBuilder:
         fun: Callable,
         name: str = "nonlinear_ineq",
     ) -> "HighLevelNLPBuilder":
+        """Add a nonlinear inequality block."""
         self._constraints.append(("ineq_block", dict(fun=fun, name=name)))
         return self
 
@@ -119,6 +152,7 @@ class HighLevelNLPBuilder:
         x_name: Optional[str] = None,
         name: str = "quadratic_eq",
     ) -> "HighLevelNLPBuilder":
+        """Add a scalar quadratic equality residual."""
         self._constraints.append(
             (
                 "quadratic_eq",
@@ -137,6 +171,7 @@ class HighLevelNLPBuilder:
         x_name: Optional[str] = None,
         name: str = "quadratic_ineq",
     ) -> "HighLevelNLPBuilder":
+        """Add a scalar quadratic inequality residual."""
         self._constraints.append(
             (
                 "quadratic_ineq",
@@ -153,6 +188,7 @@ class HighLevelNLPBuilder:
         M: jnp.ndarray,
         c: jnp.ndarray,
     ) -> "HighLevelNLPBuilder":
+        """Set an affine lower bound for a variable block."""
         self._lower_bounds[var_name] = _AffineBound(param_name=param_name, M=jnp.asarray(M), c=jnp.asarray(c))
         return self
 
@@ -164,10 +200,12 @@ class HighLevelNLPBuilder:
         M: jnp.ndarray,
         c: jnp.ndarray,
     ) -> "HighLevelNLPBuilder":
+        """Set an affine upper bound for a variable block."""
         self._upper_bounds[var_name] = _AffineBound(param_name=param_name, M=jnp.asarray(M), c=jnp.asarray(c))
         return self
 
     def _build_parameter_spec(self, example_params: dict[str, jnp.ndarray]) -> ParameterSpec:
+        """Validate example parameters and create a parameter specification."""
         missing = [k for k in self._param_sizes if k not in example_params]
         if missing:
             raise KeyError(f"Missing parameter examples for: {missing}")
@@ -181,6 +219,7 @@ class HighLevelNLPBuilder:
         return ParameterSpec(names=list(self._param_sizes.keys()), shapes=shapes)
 
     def _build_bounds(self, var_spec: VariableSpec):
+        """Build dense bound callables for all variable blocks."""
         if len(self._lower_bounds) == 0 and len(self._upper_bounds) == 0:
             return None, None
 
@@ -218,6 +257,7 @@ class HighLevelNLPBuilder:
         return lower_fun, upper_fun
 
     def build(self, *, example_params: dict[str, jnp.ndarray], jit_compile: bool = True):
+        """Construct the final :class:`jaxmodel.model.JaxNLPModel`."""
         if self._objective_fun is None:
             raise ValueError("Objective must be set before build().")
 

@@ -1,8 +1,12 @@
+"""Linear and quadratic approximations used to form SQP-style subproblems."""
+
 import jax.numpy as jnp
 from typing import NamedTuple, Optional
 
 
 class LinearizationData(NamedTuple):
+    """Affine approximation data for equality and inequality residuals."""
+
     A: jnp.ndarray
     b: jnp.ndarray
     C: jnp.ndarray
@@ -12,6 +16,8 @@ class LinearizationData(NamedTuple):
 
 
 class QuadraticObjectiveData(NamedTuple):
+    """Quadratic approximation data for a local objective model."""
+
     grad_f: jnp.ndarray
     Q: jnp.ndarray
     Q_diag: jnp.ndarray
@@ -19,6 +25,8 @@ class QuadraticObjectiveData(NamedTuple):
 
 
 class SQPSubproblemData(NamedTuple):
+    """Structured data needed to solve a local SQP subproblem."""
+
     objective: QuadraticObjectiveData
     constraints: LinearizationData
     l: Optional[jnp.ndarray]
@@ -26,6 +34,7 @@ class SQPSubproblemData(NamedTuple):
 
 
 def linearize_constraints_data(eq_fun, ineq_fun, jac_eq, jac_ineq, params, y):
+    """Return matrix data for affine residual linearizations at ``y``."""
     A = jac_eq(y, params)
     h = eq_fun(params, y)
     b = A @ y - h
@@ -38,6 +47,7 @@ def linearize_constraints_data(eq_fun, ineq_fun, jac_eq, jac_ineq, params, y):
 
 
 def linearize_constraints(eq_fun, ineq_fun, jac_eq, jac_ineq, params, y):
+    """Return affine constraint linearizations as a dictionary."""
     data = linearize_constraints_data(
         eq_fun=eq_fun,
         ineq_fun=ineq_fun,
@@ -59,6 +69,7 @@ def quadraticize_objective_data(
     use_diagonal_hessian: bool = True,
     diag_floor: Optional[float] = None,
 ):
+    """Return the quadratic approximation data for the objective at ``y``."""
     grad = grad_fun(y, params)
 
     if use_diagonal_hessian:
@@ -84,6 +95,7 @@ def quadraticize_objective(
     use_diagonal_hessian: bool = True,
     diag_floor: Optional[float] = None,
 ):
+    """Return the quadratic approximation of the objective as a dictionary."""
     data = quadraticize_objective_data(
         grad_fun=grad_fun,
         hess_fun=hess_fun,
@@ -113,6 +125,7 @@ def build_sqp_subproblem_data(
     use_diagonal_hessian: bool = True,
     diag_floor: Optional[float] = None,
 ):
+    """Build a structured SQP subproblem approximation at ``y``."""
     qdata = quadraticize_objective_data(
         grad_fun=grad_fun,
         hess_fun=hess_fun,
@@ -157,6 +170,7 @@ def build_sqp_data(
     use_diagonal_hessian: bool = True,
     diag_floor: Optional[float] = None,
 ):
+    """Build SQP approximation data as a flat dictionary."""
     data = build_sqp_subproblem_data(
         eq_fun=eq_fun,
         ineq_fun=ineq_fun,

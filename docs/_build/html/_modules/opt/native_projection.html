@@ -1,0 +1,948 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>opt.native_projection &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../citations.html">Citations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">opt.native_projection</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for opt.native_projection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Native sequential projection backend and compilation helpers.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="n">_NATIVE_FORMAT</span> <span class="o">=</span> <span class="s2">&quot;nlpoptnet-native-projection-v2&quot;</span>
+<span class="n">_SOURCE_VERSION</span> <span class="o">=</span> <span class="s2">&quot;cp-sequential-20260422&quot;</span>
+<span class="n">_C_SOURCE</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">#include &lt;math.h&gt;</span>
+<span class="s2">#include &lt;stdint.h&gt;</span>
+<span class="s2">#include &lt;stdlib.h&gt;</span>
+<span class="s2">#include &lt;string.h&gt;</span>
+
+<span class="s2">#ifdef _WIN32</span>
+<span class="s2">#define NLPOPTNET_EXPORT __declspec(dllexport)</span>
+<span class="s2">#else</span>
+<span class="s2">#define NLPOPTNET_EXPORT</span>
+<span class="s2">#endif</span>
+
+<span class="s2">static double max2(double a, double b) { return a &gt; b ? a : b; }</span>
+<span class="s2">static double min2(double a, double b) { return a &lt; b ? a : b; }</span>
+<span class="s2">static double clip(double x, double lo, double hi) { return isnan(x) ? x : min2(max2(x, lo), hi); }</span>
+
+<span class="s2">static void matvec(const double *M, int rows, int cols, const double *x, double *out) {</span>
+<span class="s2">    for (int r = 0; r &lt; rows; ++r) {</span>
+<span class="s2">        double acc = 0.0;</span>
+<span class="s2">        for (int c = 0; c &lt; cols; ++c) acc += M[(size_t)r * cols + c] * x[c];</span>
+<span class="s2">        out[r] = acc;</span>
+<span class="s2">    }</span>
+<span class="s2">}</span>
+
+<span class="s2">static void mat_t_vec_add(const double *M, int rows, int cols, const double *x, double *out) {</span>
+<span class="s2">    for (int r = 0; r &lt; rows; ++r) {</span>
+<span class="s2">        const double xr = x[r];</span>
+<span class="s2">        for (int c = 0; c &lt; cols; ++c) out[c] += M[(size_t)r * cols + c] * xr;</span>
+<span class="s2">    }</span>
+<span class="s2">}</span>
+
+<span class="s2">static double vec_norm(const double *x, int n) {</span>
+<span class="s2">    double acc = 0.0;</span>
+<span class="s2">    for (int i = 0; i &lt; n; ++i) acc += x[i] * x[i];</span>
+<span class="s2">    return sqrt(acc);</span>
+<span class="s2">}</span>
+
+<span class="s2">static double estimate_ac_norm(const double *A, int me, const double *C, int mi, int n, int iters, unsigned int seed) {</span>
+<span class="s2">    if (n &lt;= 0) return 1e-12;</span>
+<span class="s2">    double *x = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *y = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *tmp_e = (double *)calloc((size_t)(me &gt; 0 ? me : 1), sizeof(double));</span>
+<span class="s2">    double *tmp_i = (double *)calloc((size_t)(mi &gt; 0 ? mi : 1), sizeof(double));</span>
+<span class="s2">    if (!x || !y || !tmp_e || !tmp_i) {</span>
+<span class="s2">        free(x); free(y); free(tmp_e); free(tmp_i);</span>
+<span class="s2">        return 1.0;</span>
+<span class="s2">    }</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">        double v = sin((double)(seed + 1u) * 0.001 + (double)(j + 1) * 12.9898);</span>
+<span class="s2">        x[j] = v == 0.0 ? 1.0 : v;</span>
+<span class="s2">    }</span>
+<span class="s2">    double nrm = vec_norm(x, n);</span>
+<span class="s2">    if (nrm &lt;= 1e-12) nrm = 1.0;</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) x[j] /= nrm;</span>
+
+<span class="s2">    double lam = 0.0;</span>
+<span class="s2">    for (int it = 0; it &lt; iters; ++it) {</span>
+<span class="s2">        memset(y, 0, (size_t)n * sizeof(double));</span>
+<span class="s2">        if (me &gt; 0) {</span>
+<span class="s2">            matvec(A, me, n, x, tmp_e);</span>
+<span class="s2">            mat_t_vec_add(A, me, n, tmp_e, y);</span>
+<span class="s2">        }</span>
+<span class="s2">        if (mi &gt; 0) {</span>
+<span class="s2">            matvec(C, mi, n, x, tmp_i);</span>
+<span class="s2">            mat_t_vec_add(C, mi, n, tmp_i, y);</span>
+<span class="s2">        }</span>
+<span class="s2">        lam = 0.0;</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) lam += x[j] * y[j];</span>
+<span class="s2">        nrm = vec_norm(y, n);</span>
+<span class="s2">        if (nrm &lt;= 1e-12) break;</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) x[j] = y[j] / nrm;</span>
+<span class="s2">    }</span>
+<span class="s2">    free(x); free(y); free(tmp_e); free(tmp_i);</span>
+<span class="s2">    return sqrt(max2(lam, 0.0)) + 1e-12;</span>
+<span class="s2">}</span>
+
+<span class="s2">static void ruiz_equilibrate(</span>
+<span class="s2">    double *q, double *c, double *A, double *b, double *C, double *d, double *l, double *u,</span>
+<span class="s2">    int n, int me, int mi, int iterations,</span>
+<span class="s2">    double *col_scale, double *eq_scale, double *ineq_scale</span>
+<span class="s2">) {</span>
+<span class="s2">    const double eps = 1e-6;</span>
+<span class="s2">    double *col_update = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    if (!col_update) return;</span>
+<span class="s2">    for (int it = 0; it &lt; iterations; ++it) {</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">            double metric = fabs(q[j]);</span>
+<span class="s2">            for (int r = 0; r &lt; me; ++r) metric = max2(metric, fabs(A[(size_t)r * n + j]));</span>
+<span class="s2">            for (int r = 0; r &lt; mi; ++r) metric = max2(metric, fabs(C[(size_t)r * n + j]));</span>
+<span class="s2">            col_update[j] = 1.0 / sqrt(max2(metric, eps));</span>
+<span class="s2">        }</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">            const double s = col_update[j];</span>
+<span class="s2">            q[j] *= s * s;</span>
+<span class="s2">            c[j] *= s;</span>
+<span class="s2">            l[j] /= s;</span>
+<span class="s2">            u[j] /= s;</span>
+<span class="s2">            col_scale[j] *= s;</span>
+<span class="s2">        }</span>
+<span class="s2">        for (int r = 0; r &lt; me; ++r)</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j)</span>
+<span class="s2">                A[(size_t)r * n + j] *= col_update[j];</span>
+<span class="s2">        for (int r = 0; r &lt; mi; ++r)</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j)</span>
+<span class="s2">                C[(size_t)r * n + j] *= col_update[j];</span>
+
+<span class="s2">        for (int r = 0; r &lt; me; ++r) {</span>
+<span class="s2">            double metric = 0.0;</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) metric = max2(metric, fabs(A[(size_t)r * n + j]));</span>
+<span class="s2">            const double s = 1.0 / sqrt(max2(metric, eps));</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) A[(size_t)r * n + j] *= s;</span>
+<span class="s2">            b[r] *= s;</span>
+<span class="s2">            eq_scale[r] *= s;</span>
+<span class="s2">        }</span>
+<span class="s2">        for (int r = 0; r &lt; mi; ++r) {</span>
+<span class="s2">            double metric = 0.0;</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) metric = max2(metric, fabs(C[(size_t)r * n + j]));</span>
+<span class="s2">            const double s = 1.0 / sqrt(max2(metric, eps));</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) C[(size_t)r * n + j] *= s;</span>
+<span class="s2">            d[r] *= s;</span>
+<span class="s2">            ineq_scale[r] *= s;</span>
+<span class="s2">        }</span>
+<span class="s2">    }</span>
+<span class="s2">    free(col_update);</span>
+<span class="s2">}</span>
+
+<span class="s2">static double primal_residual(const double *z, const double *A, const double *b, const double *C, const double *d, const double *l, const double *u, int n, int me, int mi) {</span>
+<span class="s2">    double out = 0.0;</span>
+<span class="s2">    for (int r = 0; r &lt; me; ++r) {</span>
+<span class="s2">        double acc = -b[r];</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) acc += A[(size_t)r * n + j] * z[j];</span>
+<span class="s2">        out = max2(out, fabs(acc));</span>
+<span class="s2">    }</span>
+<span class="s2">    for (int r = 0; r &lt; mi; ++r) {</span>
+<span class="s2">        double acc = -d[r];</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) acc += C[(size_t)r * n + j] * z[j];</span>
+<span class="s2">        out = max2(out, max2(acc, 0.0));</span>
+<span class="s2">    }</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">        out = max2(out, max2(l[j] - z[j], 0.0));</span>
+<span class="s2">        out = max2(out, max2(z[j] - u[j], 0.0));</span>
+<span class="s2">    }</span>
+<span class="s2">    return out;</span>
+<span class="s2">}</span>
+
+<span class="s2">static double primal_dual_gap(const double *q, const double *c, const double *A, const double *b, const double *C, const double *d, const double *l, const double *u, const double *z, const double *lam, const double *mu, int n, int me, int mi) {</span>
+<span class="s2">    double primal = 0.0;</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) primal += 0.5 * q[j] * z[j] * z[j] + c[j] * z[j];</span>
+<span class="s2">    double dual = 0.0;</span>
+<span class="s2">    for (int r = 0; r &lt; me; ++r) dual -= b[r] * lam[r];</span>
+<span class="s2">    for (int r = 0; r &lt; mi; ++r) dual -= d[r] * mu[r];</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">        double t = c[j];</span>
+<span class="s2">        for (int r = 0; r &lt; me; ++r) t += A[(size_t)r * n + j] * lam[r];</span>
+<span class="s2">        for (int r = 0; r &lt; mi; ++r) t += C[(size_t)r * n + j] * mu[r];</span>
+<span class="s2">        double y_dual;</span>
+<span class="s2">        if (q[j] &gt; 1e-12) {</span>
+<span class="s2">            y_dual = clip(-t / q[j], l[j], u[j]);</span>
+<span class="s2">        } else {</span>
+<span class="s2">            y_dual = t &gt;= 0.0 ? l[j] : u[j];</span>
+<span class="s2">        }</span>
+<span class="s2">        dual += 0.5 * q[j] * y_dual * y_dual + t * y_dual;</span>
+<span class="s2">    }</span>
+<span class="s2">    double gap = max2(primal - dual, 0.0);</span>
+<span class="s2">    double scale = max2(1.0, max2(fabs(primal), fabs(dual)));</span>
+<span class="s2">    return gap / scale;</span>
+<span class="s2">}</span>
+
+<span class="s2">static int solve_one(</span>
+<span class="s2">    int n, int me, int mi,</span>
+<span class="s2">    const double *q_in, const double *c_in, const double *A_in, const double *b_in,</span>
+<span class="s2">    const double *C_in, const double *d_in, const double *l_in, const double *u_in,</span>
+<span class="s2">    const double *y0, const double *lam0, const double *mu0,</span>
+<span class="s2">    double *y_out, double *lam_out, double *mu_out,</span>
+<span class="s2">    int max_iter, double tol, double safety, int knorm_iters, unsigned int knorm_seed,</span>
+<span class="s2">    int is_fixed, int use_ruiz, int ruiz_iters</span>
+<span class="s2">) {</span>
+<span class="s2">    double *q = (double *)malloc((size_t)n * sizeof(double));</span>
+<span class="s2">    double *c = (double *)malloc((size_t)n * sizeof(double));</span>
+<span class="s2">    double *A = (double *)malloc((size_t)(me &gt; 0 ? me * n : 1) * sizeof(double));</span>
+<span class="s2">    double *b = (double *)malloc((size_t)(me &gt; 0 ? me : 1) * sizeof(double));</span>
+<span class="s2">    double *C = (double *)malloc((size_t)(mi &gt; 0 ? mi * n : 1) * sizeof(double));</span>
+<span class="s2">    double *d = (double *)malloc((size_t)(mi &gt; 0 ? mi : 1) * sizeof(double));</span>
+<span class="s2">    double *l = (double *)malloc((size_t)n * sizeof(double));</span>
+<span class="s2">    double *u = (double *)malloc((size_t)n * sizeof(double));</span>
+<span class="s2">    double *col_scale = (double *)malloc((size_t)n * sizeof(double));</span>
+<span class="s2">    double *eq_scale = (double *)malloc((size_t)(me &gt; 0 ? me : 1) * sizeof(double));</span>
+<span class="s2">    double *ineq_scale = (double *)malloc((size_t)(mi &gt; 0 ? mi : 1) * sizeof(double));</span>
+<span class="s2">    double *z = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *z_next = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *zbar = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *lam = (double *)calloc((size_t)(me &gt; 0 ? me : 1), sizeof(double));</span>
+<span class="s2">    double *lam_hat = (double *)calloc((size_t)(me &gt; 0 ? me : 1), sizeof(double));</span>
+<span class="s2">    double *mu = (double *)calloc((size_t)(mi &gt; 0 ? mi : 1), sizeof(double));</span>
+<span class="s2">    double *mu_hat = (double *)calloc((size_t)(mi &gt; 0 ? mi : 1), sizeof(double));</span>
+<span class="s2">    double *grad = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    double *P = (double *)calloc((size_t)n, sizeof(double));</span>
+<span class="s2">    if (!q || !c || !A || !b || !C || !d || !l || !u || !col_scale || !eq_scale || !ineq_scale || !z || !z_next || !zbar || !lam || !lam_hat || !mu || !mu_hat || !grad || !P) return 2;</span>
+
+<span class="s2">    memcpy(q, q_in, (size_t)n * sizeof(double));</span>
+<span class="s2">    memcpy(c, c_in, (size_t)n * sizeof(double));</span>
+<span class="s2">    if (me &gt; 0) {</span>
+<span class="s2">        memcpy(A, A_in, (size_t)me * n * sizeof(double));</span>
+<span class="s2">        memcpy(b, b_in, (size_t)me * sizeof(double));</span>
+<span class="s2">    }</span>
+<span class="s2">    if (mi &gt; 0) {</span>
+<span class="s2">        memcpy(C, C_in, (size_t)mi * n * sizeof(double));</span>
+<span class="s2">        memcpy(d, d_in, (size_t)mi * sizeof(double));</span>
+<span class="s2">    }</span>
+<span class="s2">    memcpy(l, l_in, (size_t)n * sizeof(double));</span>
+<span class="s2">    memcpy(u, u_in, (size_t)n * sizeof(double));</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) col_scale[j] = 1.0;</span>
+<span class="s2">    for (int r = 0; r &lt; me; ++r) eq_scale[r] = 1.0;</span>
+<span class="s2">    for (int r = 0; r &lt; mi; ++r) ineq_scale[r] = 1.0;</span>
+
+<span class="s2">    if (use_ruiz) ruiz_equilibrate(q, c, A, b, C, d, l, u, n, me, mi, ruiz_iters, col_scale, eq_scale, ineq_scale);</span>
+
+<span class="s2">    double Lf = 0.0;</span>
+<span class="s2">    double gamma = n &gt; 0 ? q[0] : 0.0;</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">        Lf = max2(Lf, q[j]);</span>
+<span class="s2">        gamma = min2(gamma, q[j]);</span>
+<span class="s2">    }</span>
+<span class="s2">    gamma = max2(gamma, 0.0);</span>
+<span class="s2">    double L = max2(estimate_ac_norm(A, me, C, mi, n, knorm_iters, knorm_seed), 1e-12);</span>
+<span class="s2">    double sigma = safety / L;</span>
+<span class="s2">    double tau = (!is_fixed &amp;&amp; gamma &gt; 0.0) ? safety / L : safety / (Lf + L);</span>
+<span class="s2">    double theta = 1.0;</span>
+<span class="s2">    for (int j = 0; j &lt; n; ++j) P[j] = 1.0 / (1.0 + tau * q[j]);</span>
+
+<span class="s2">    for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">        z[j] = y0[j] / col_scale[j];</span>
+<span class="s2">        zbar[j] = z[j];</span>
+<span class="s2">    }</span>
+<span class="s2">    for (int r = 0; r &lt; me; ++r) lam[r] = lam0[r] / (eq_scale[r] == 0.0 ? 1.0 : eq_scale[r]);</span>
+<span class="s2">    for (int r = 0; r &lt; mi; ++r) mu[r] = mu0[r] / (ineq_scale[r] == 0.0 ? 1.0 : ineq_scale[r]);</span>
+
+<span class="s2">    for (int it = 0; it &lt; max_iter; ++it) {</span>
+<span class="s2">        for (int r = 0; r &lt; me; ++r) {</span>
+<span class="s2">            double acc = -b[r];</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) acc += A[(size_t)r * n + j] * zbar[j];</span>
+<span class="s2">            lam_hat[r] = lam[r] + sigma * acc;</span>
+<span class="s2">        }</span>
+<span class="s2">        for (int r = 0; r &lt; mi; ++r) {</span>
+<span class="s2">            double acc = -d[r];</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) acc += C[(size_t)r * n + j] * zbar[j];</span>
+<span class="s2">            mu_hat[r] = max2(mu[r] + sigma * acc, 0.0);</span>
+<span class="s2">        }</span>
+<span class="s2">        memset(grad, 0, (size_t)n * sizeof(double));</span>
+<span class="s2">        if (me &gt; 0) mat_t_vec_add(A, me, n, lam_hat, grad);</span>
+<span class="s2">        if (mi &gt; 0) mat_t_vec_add(C, mi, n, mu_hat, grad);</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) {</span>
+<span class="s2">            z_next[j] = P[j] * (z[j] - tau * grad[j] - tau * c[j]);</span>
+<span class="s2">            z_next[j] = clip(z_next[j], l[j], u[j]);</span>
+<span class="s2">        }</span>
+<span class="s2">        for (int j = 0; j &lt; n; ++j) zbar[j] = z_next[j] + theta * (z_next[j] - z[j]);</span>
+<span class="s2">        double pres = primal_residual(z_next, A, b, C, d, l, u, n, me, mi);</span>
+<span class="s2">        double gap = primal_dual_gap(q, c, A, b, C, d, l, u, z_next, lam_hat, mu_hat, n, me, mi);</span>
+<span class="s2">        memcpy(z, z_next, (size_t)n * sizeof(double));</span>
+<span class="s2">        if (me &gt; 0) memcpy(lam, lam_hat, (size_t)me * sizeof(double));</span>
+<span class="s2">        if (mi &gt; 0) memcpy(mu, mu_hat, (size_t)mi * sizeof(double));</span>
+<span class="s2">        if (pres &lt;= tol &amp;&amp; gap &lt;= tol) break;</span>
+<span class="s2">        if (!is_fixed &amp;&amp; gamma &gt; 0.0) {</span>
+<span class="s2">            double theta_new = 1.0 / sqrt(1.0 + gamma * tau);</span>
+<span class="s2">            tau = theta_new * tau;</span>
+<span class="s2">            sigma = sigma / theta_new;</span>
+<span class="s2">            theta = theta_new;</span>
+<span class="s2">            for (int j = 0; j &lt; n; ++j) P[j] = 1.0 / (1.0 + tau * q[j]);</span>
+<span class="s2">        }</span>
+<span class="s2">    }</span>
+
+<span class="s2">    for (int j = 0; j &lt; n; ++j) y_out[j] = col_scale[j] * z[j];</span>
+<span class="s2">    for (int r = 0; r &lt; me; ++r) lam_out[r] = eq_scale[r] * lam[r];</span>
+<span class="s2">    for (int r = 0; r &lt; mi; ++r) mu_out[r] = ineq_scale[r] * mu[r];</span>
+
+<span class="s2">    free(q); free(c); free(A); free(b); free(C); free(d); free(l); free(u);</span>
+<span class="s2">    free(col_scale); free(eq_scale); free(ineq_scale);</span>
+<span class="s2">    free(z); free(z_next); free(zbar); free(lam); free(lam_hat); free(mu); free(mu_hat); free(grad); free(P);</span>
+<span class="s2">    return 0;</span>
+<span class="s2">}</span>
+
+<span class="s2">NLPOPTNET_EXPORT int nlpoptnet_cp_solve(</span>
+<span class="s2">    int B, int n, int me, int mi,</span>
+<span class="s2">    const double *Q, const double *c, const double *A, const double *b,</span>
+<span class="s2">    const double *C, const double *d, const double *l, const double *u,</span>
+<span class="s2">    const double *y0, const double *lam0, const double *mu0,</span>
+<span class="s2">    double *y_out, double *lam_out, double *mu_out,</span>
+<span class="s2">    int max_iter, double tol, double safety, int knorm_iters, unsigned int knorm_seed,</span>
+<span class="s2">    int is_fixed, int use_ruiz, int ruiz_iters</span>
+<span class="s2">) {</span>
+<span class="s2">    for (int batch = 0; batch &lt; B; ++batch) {</span>
+<span class="s2">        int rc = solve_one(</span>
+<span class="s2">            n, me, mi,</span>
+<span class="s2">            Q + (size_t)batch * n,</span>
+<span class="s2">            c + (size_t)batch * n,</span>
+<span class="s2">            A + (size_t)batch * me * n,</span>
+<span class="s2">            b + (size_t)batch * me,</span>
+<span class="s2">            C + (size_t)batch * mi * n,</span>
+<span class="s2">            d + (size_t)batch * mi,</span>
+<span class="s2">            l + (size_t)batch * n,</span>
+<span class="s2">            u + (size_t)batch * n,</span>
+<span class="s2">            y0 + (size_t)batch * n,</span>
+<span class="s2">            lam0 + (size_t)batch * me,</span>
+<span class="s2">            mu0 + (size_t)batch * mi,</span>
+<span class="s2">            y_out + (size_t)batch * n,</span>
+<span class="s2">            lam_out + (size_t)batch * me,</span>
+<span class="s2">            mu_out + (size_t)batch * mi,</span>
+<span class="s2">            max_iter, tol, safety, knorm_iters, knorm_seed, is_fixed, use_ruiz, ruiz_iters</span>
+<span class="s2">        );</span>
+<span class="s2">        if (rc != 0) return rc;</span>
+<span class="s2">    }</span>
+<span class="s2">    return 0;</span>
+<span class="s2">}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="NativeProjection">
+<a class="viewcode-back" href="../../api/core/opt/native_projection.html#opt.native_projection.NativeProjection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NativeProjection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ctypes wrapper around the compiled native CP projection library.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shared_library</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load a shared library that exposes ``nlpoptnet_cp_solve``.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">shared_library</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lib</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lib</span><span class="o">.</span><span class="n">nlpoptnet_cp_solve</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ptr</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_uint</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+            <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_array</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert input to a contiguous float64 array with a fixed shape.&quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected array shape </span><span class="si">{</span><span class="n">shape</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">arr</span>
+
+<div class="viewcode-block" id="NativeProjection.solve">
+<a class="viewcode-back" href="../../api/core/opt/native_projection.html#opt.native_projection.NativeProjection.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">Q_diag</span><span class="p">,</span>
+        <span class="n">c</span><span class="p">,</span>
+        <span class="n">A</span><span class="p">,</span>
+        <span class="n">b</span><span class="p">,</span>
+        <span class="n">C</span><span class="p">,</span>
+        <span class="n">d</span><span class="p">,</span>
+        <span class="n">l</span><span class="p">,</span>
+        <span class="n">u</span><span class="p">,</span>
+        <span class="n">y0</span><span class="p">,</span>
+        <span class="n">lam0</span><span class="p">,</span>
+        <span class="n">mu0</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">cfg</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve a batched projection problem with the native backend.&quot;&quot;&quot;</span>
+        <span class="n">Q_diag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">Q_diag</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">Q_diag</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Q_diag must have shape (batch, n).&quot;</span><span class="p">)</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">Q_diag</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">A</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">B</span> <span class="ow">or</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A must have shape (batch, me, n).&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">C</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">C</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">B</span> <span class="ow">or</span> <span class="n">C</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;C must have shape (batch, mi, n).&quot;</span><span class="p">)</span>
+        <span class="n">me</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">mi</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">me</span><span class="p">))</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">mi</span><span class="p">))</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">y0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">y0</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">lam0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">lam0</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">me</span><span class="p">))</span>
+        <span class="n">mu0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_array</span><span class="p">(</span><span class="n">mu0</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">mi</span><span class="p">))</span>
+        <span class="n">y_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">lam_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="n">me</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">mu_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="n">mi</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+        <span class="n">rc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_solve</span><span class="p">(</span>
+            <span class="n">B</span><span class="p">,</span>
+            <span class="n">n</span><span class="p">,</span>
+            <span class="n">me</span><span class="p">,</span>
+            <span class="n">mi</span><span class="p">,</span>
+            <span class="n">Q_diag</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">A</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">b</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">C</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">l</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">u</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">y0</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">lam0</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">mu0</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">y_out</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">lam_out</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="n">mu_out</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">ptr</span><span class="p">),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cp_iters</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cp_tol</span><span class="p">),</span>
+            <span class="nb">float</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">safety</span><span class="p">),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">knorm_iters</span><span class="p">),</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">knorm_seed</span><span class="p">),</span>
+            <span class="mi">1</span> <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">IS_FIXED</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="mi">1</span> <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">use_ruiz</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">ruiz_iters</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Native projection solver failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y_out</span><span class="p">,</span> <span class="n">lam_out</span><span class="p">,</span> <span class="n">mu_out</span></div>
+</div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_platform_tag</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a platform tag used for caching compiled libraries.&quot;&quot;&quot;</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
+    <span class="n">machine</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">machine</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">system</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">machine</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_shared_library_name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the platform-specific shared library filename.&quot;&quot;&quot;</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;windows&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;projection_native.dll&quot;</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;projection_native.dylib&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;projection_native.so&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_native_cache_root</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the root directory used to cache native projection binaries.&quot;&quot;&quot;</span>
+    <span class="n">override</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;NLPOPTNET_NATIVE_CACHE_DIR&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">override</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">override</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;windows&quot;</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LOCALAPPDATA&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;TEMP&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">base</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;nlpoptnet&quot;</span> <span class="o">/</span> <span class="s2">&quot;native_projection&quot;</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;Library&quot;</span> <span class="o">/</span> <span class="s2">&quot;Caches&quot;</span> <span class="o">/</span> <span class="s2">&quot;nlpoptnet&quot;</span> <span class="o">/</span> <span class="s2">&quot;native_projection&quot;</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;XDG_CACHE_HOME&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">base</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">base</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;nlpoptnet&quot;</span> <span class="o">/</span> <span class="s2">&quot;native_projection&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.cache&quot;</span> <span class="o">/</span> <span class="s2">&quot;nlpoptnet&quot;</span> <span class="o">/</span> <span class="s2">&quot;native_projection&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_native_cache_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy versioned cache directory for older run manifests.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_native_cache_root</span><span class="p">()</span> <span class="o">/</span> <span class="n">_SOURCE_VERSION</span> <span class="o">/</span> <span class="n">_platform_tag</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_native_artifact_dir</span><span class="p">(</span><span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">platform_tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the run-local directory used to store native projection binaries.&quot;&quot;&quot;</span>
+    <span class="n">tag</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">platform_tag</span> <span class="ow">or</span> <span class="n">_platform_tag</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;native_projection&quot;</span> <span class="o">/</span> <span class="n">_SOURCE_VERSION</span> <span class="o">/</span> <span class="n">tag</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_native_library_path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">platform_tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the run-local shared library path for the current platform.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_native_artifact_dir</span><span class="p">(</span><span class="n">run_dir</span><span class="p">,</span> <span class="n">platform_tag</span><span class="o">=</span><span class="n">platform_tag</span><span class="p">)</span> <span class="o">/</span> <span class="n">_shared_library_name</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compiler_candidates</span><span class="p">(</span><span class="n">explicit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return candidate C compilers to try for native compilation.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">explicit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">explicit</span><span class="p">]</span>
+    <span class="n">candidates</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">env_cc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;CC&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">env_cc</span><span class="p">:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">env_cc</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;windows&quot;</span><span class="p">:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;cl&quot;</span><span class="p">,</span> <span class="s2">&quot;gcc&quot;</span><span class="p">,</span> <span class="s2">&quot;clang&quot;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">candidates</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;cc&quot;</span><span class="p">,</span> <span class="s2">&quot;gcc&quot;</span><span class="p">,</span> <span class="s2">&quot;clang&quot;</span><span class="p">])</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="n">out</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="ow">or</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compile_command</span><span class="p">(</span><span class="n">compiler</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">shared</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the platform-specific compile command.&quot;&quot;&quot;</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="n">compiler_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">compiler</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;windows&quot;</span> <span class="ow">and</span> <span class="n">compiler_name</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;cl&quot;</span><span class="p">,</span> <span class="s2">&quot;cl.exe&quot;</span><span class="p">}:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">compiler</span><span class="p">,</span> <span class="s2">&quot;/O2&quot;</span><span class="p">,</span> <span class="s2">&quot;/LD&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;/Fe:</span><span class="si">{</span><span class="n">shared</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">system</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">compiler</span><span class="p">,</span> <span class="s2">&quot;-O3&quot;</span><span class="p">,</span> <span class="s2">&quot;-std=c99&quot;</span><span class="p">,</span> <span class="s2">&quot;-fPIC&quot;</span><span class="p">,</span> <span class="s2">&quot;-dynamiclib&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="s2">&quot;-lm&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">shared</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">compiler</span><span class="p">,</span> <span class="s2">&quot;-O3&quot;</span><span class="p">,</span> <span class="s2">&quot;-std=c99&quot;</span><span class="p">,</span> <span class="s2">&quot;-fPIC&quot;</span><span class="p">,</span> <span class="s2">&quot;-shared&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="s2">&quot;-lm&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">shared</span><span class="p">)]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_platform_payload</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">shared_library</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">compiler</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">command</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">returncode</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">stdout</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">stderr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a normalized payload for one platform-specific native artifact.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;source_version&quot;</span><span class="p">:</span> <span class="n">_SOURCE_VERSION</span><span class="p">,</span>
+        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">source</span><span class="p">,</span>
+        <span class="s2">&quot;source_stored&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;shared_library&quot;</span><span class="p">:</span> <span class="n">shared_library</span><span class="p">,</span>
+        <span class="s2">&quot;platform&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">(),</span>
+        <span class="s2">&quot;machine&quot;</span><span class="p">:</span> <span class="n">platform</span><span class="o">.</span><span class="n">machine</span><span class="p">(),</span>
+        <span class="s2">&quot;platform_tag&quot;</span><span class="p">:</span> <span class="n">_platform_tag</span><span class="p">(),</span>
+        <span class="s2">&quot;compiler&quot;</span><span class="p">:</span> <span class="n">compiler</span><span class="p">,</span>
+        <span class="s2">&quot;command&quot;</span><span class="p">:</span> <span class="n">command</span><span class="p">,</span>
+        <span class="s2">&quot;returncode&quot;</span><span class="p">:</span> <span class="n">returncode</span><span class="p">,</span>
+        <span class="s2">&quot;stdout&quot;</span><span class="p">:</span> <span class="n">stdout</span><span class="p">,</span>
+        <span class="s2">&quot;stderr&quot;</span><span class="p">:</span> <span class="n">stderr</span><span class="p">,</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_manifest_payload</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">current</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">artifacts</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a normalized manifest payload for native compilation state.&quot;&quot;&quot;</span>
+    <span class="n">platform_tag</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">,</span> <span class="n">_platform_tag</span><span class="p">()))</span>
+    <span class="n">stored_artifacts</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span> <span class="nb">dict</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="p">(</span><span class="n">artifacts</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">stored_artifacts</span><span class="p">[</span><span class="n">platform_tag</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="n">_NATIVE_FORMAT</span><span class="p">,</span>
+        <span class="s2">&quot;source_version&quot;</span><span class="p">:</span> <span class="n">_SOURCE_VERSION</span><span class="p">,</span>
+        <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;source_stored&quot;</span><span class="p">:</span> <span class="nb">bool</span><span class="p">(</span><span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_stored&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)),</span>
+        <span class="s2">&quot;shared_library&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shared_library&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;cache_scope&quot;</span><span class="p">:</span> <span class="s2">&quot;run&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;platform&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;platform&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;machine&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;machine&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;platform_tag&quot;</span><span class="p">:</span> <span class="n">platform_tag</span><span class="p">,</span>
+        <span class="s2">&quot;batch_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;sequential&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;compiler&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compiler&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;command&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;command&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;returncode&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;returncode&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;stdout&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;stderr&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stderr&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;artifacts&quot;</span><span class="p">:</span> <span class="n">stored_artifacts</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">message</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;message&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">message</span>
+    <span class="k">return</span> <span class="n">payload</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_manifest</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a compilation manifest if it exists and is valid JSON.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">payload</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_artifact_entries</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return platform-specific artifact entries from current or legacy manifests.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">artifacts</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;artifacts&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifacts</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">artifacts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">normalized</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+            <span class="n">normalized</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">tag</span><span class="p">))</span>
+            <span class="n">normalized</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">,</span> <span class="n">_SOURCE_VERSION</span><span class="p">))</span>
+            <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">normalized</span><span class="p">[</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">])]</span> <span class="o">=</span> <span class="n">normalized</span>
+    <span class="n">legacy_tag</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy_tag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">legacy_tag</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">legacy_entry</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;source_version&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;source_stored&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;shared_library&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;platform&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;machine&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;platform_tag&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;compiler&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;command&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;returncode&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;stdout&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;stderr&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">payload</span>
+        <span class="p">}</span>
+        <span class="n">legacy_entry</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">,</span> <span class="n">_SOURCE_VERSION</span><span class="p">))</span>
+        <span class="n">legacy_entry</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">legacy_tag</span><span class="p">))</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">legacy_tag</span><span class="p">)]</span> <span class="o">=</span> <span class="n">legacy_entry</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_entry_shared_library</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a shared library path for one platform entry.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;ok&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">_SOURCE_VERSION</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">shared_library</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;shared_library&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">shared_library</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">candidate</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">shared_library</span><span class="p">))</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="ow">and</span> <span class="n">candidate</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">candidate</span>
+
+    <span class="n">run_local</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="n">candidate</span>
+    <span class="k">if</span> <span class="n">run_local</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">run_local</span>
+
+    <span class="n">legacy_relative</span> <span class="o">=</span> <span class="n">run_dir</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">shared_library</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy_relative</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy_relative</span>
+
+    <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;platform_tag&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">_platform_tag</span><span class="p">():</span>
+        <span class="n">legacy_cached</span> <span class="o">=</span> <span class="n">_native_cache_dir</span><span class="p">()</span> <span class="o">/</span> <span class="n">candidate</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="n">legacy_cached</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">legacy_cached</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_usable_manifest</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check whether a manifest points to a compatible shared library.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_resolve_shared_library</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_shared_library</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the actual shared library path from a manifest payload.&quot;&quot;&quot;</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">_artifact_entries</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_platform_tag</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">_resolve_entry_shared_library</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_recompile_message</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Describe why the current system needs a fresh native compilation.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">artifacts</span> <span class="o">=</span> <span class="n">_artifact_entries</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">artifacts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_platform_tag</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">_SOURCE_VERSION</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;Native projection artifact is out of date. Compiling for current system.&quot;</span>
+        <span class="k">if</span> <span class="n">_resolve_entry_shared_library</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;Native projection artifact for the current system was not found. Compiling for current system.&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">artifacts</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;Model was trained on a different system. Compiling for current system.&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;Native projection artifact was not found. Compiling for current system.&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_relative_run_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">run_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a manifest-friendly relative path when possible.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="compile_native_projection">
+<a class="viewcode-back" href="../../api/core/opt/native_projection.html#opt.native_projection.compile_native_projection">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compile_native_projection</span><span class="p">(</span><span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cc</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compile and store the native projection shared library in the run directory.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">target</span> <span class="o">/</span> <span class="s2">&quot;projection_native.json&quot;</span>
+    <span class="n">existing</span> <span class="o">=</span> <span class="n">_read_manifest</span><span class="p">(</span><span class="n">manifest</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span> <span class="ow">and</span> <span class="n">_is_usable_manifest</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">existing</span>
+
+    <span class="n">artifact_dir</span> <span class="o">=</span> <span class="n">_native_artifact_dir</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">artifact_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">_platform_payload</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;cache-unavailable&quot;</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="n">_manifest_payload</span><span class="p">(</span>
+            <span class="n">current</span><span class="o">=</span><span class="n">current</span><span class="p">,</span>
+            <span class="n">artifacts</span><span class="o">=</span><span class="n">_artifact_entries</span><span class="p">(</span><span class="n">existing</span><span class="p">),</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">_recompile_message</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">target</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">manifest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">payload</span>
+    <span class="n">shared</span> <span class="o">=</span> <span class="n">_native_library_path</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="n">compilers</span> <span class="o">=</span> <span class="n">_compiler_candidates</span><span class="p">(</span><span class="n">cc</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">compilers</span><span class="p">:</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">_platform_payload</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;missing-compiler&quot;</span><span class="p">)</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="n">_manifest_payload</span><span class="p">(</span>
+            <span class="n">current</span><span class="o">=</span><span class="n">current</span><span class="p">,</span>
+            <span class="n">artifacts</span><span class="o">=</span><span class="n">_artifact_entries</span><span class="p">(</span><span class="n">existing</span><span class="p">),</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">_recompile_message</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">target</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">manifest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">payload</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">_recompile_message</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+    <span class="n">artifacts</span> <span class="o">=</span> <span class="n">_artifact_entries</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span>
+    <span class="n">last_payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;nlpoptnet_native_&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tmp</span><span class="p">:</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;projection_native.c&quot;</span>
+        <span class="n">source</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">_C_SOURCE</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">compiler</span> <span class="ow">in</span> <span class="n">compilers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">shared</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">shared</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+                <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">_compile_command</span><span class="p">(</span><span class="n">compiler</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">shared</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">target</span><span class="p">),</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="n">_platform_payload</span><span class="p">(</span>
+                    <span class="n">source</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">status</span><span class="o">=</span><span class="s2">&quot;compile-failed&quot;</span><span class="p">,</span>
+                    <span class="n">compiler</span><span class="o">=</span><span class="n">compiler</span><span class="p">,</span>
+                    <span class="n">command</span><span class="o">=</span><span class="n">cmd</span><span class="p">,</span>
+                    <span class="n">returncode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">stdout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">stderr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">last_payload</span> <span class="o">=</span> <span class="n">payload</span>
+                <span class="k">continue</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">_platform_payload</span><span class="p">(</span>
+                <span class="n">source</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">shared_library</span><span class="o">=</span><span class="n">_relative_run_path</span><span class="p">(</span><span class="n">shared</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span> <span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">shared</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ok&quot;</span> <span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">shared</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;compile-failed&quot;</span><span class="p">,</span>
+                <span class="n">compiler</span><span class="o">=</span><span class="n">compiler</span><span class="p">,</span>
+                <span class="n">command</span><span class="o">=</span><span class="n">cmd</span><span class="p">,</span>
+                <span class="n">returncode</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">returncode</span><span class="p">),</span>
+                <span class="n">stdout</span><span class="o">=</span><span class="n">proc</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span>
+                <span class="n">stderr</span><span class="o">=</span><span class="n">proc</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">last_payload</span> <span class="o">=</span> <span class="n">payload</span>
+            <span class="k">if</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ok&quot;</span><span class="p">:</span>
+                <span class="k">break</span>
+
+    <span class="n">current</span> <span class="o">=</span> <span class="n">last_payload</span> <span class="k">if</span> <span class="n">last_payload</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_platform_payload</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;compile-failed&quot;</span><span class="p">)</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">_manifest_payload</span><span class="p">(</span><span class="n">current</span><span class="o">=</span><span class="n">current</span><span class="p">,</span> <span class="n">artifacts</span><span class="o">=</span><span class="n">artifacts</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+    <span class="n">manifest</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">payload</span></div>
+
+
+
+<div class="viewcode-block" id="load_or_compile_native_projection">
+<a class="viewcode-back" href="../../api/core/opt/native_projection.html#opt.native_projection.load_or_compile_native_projection">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_or_compile_native_projection</span><span class="p">(</span><span class="n">run_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NativeProjection</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a usable native projection library or try to compile one.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">run_dir</span><span class="p">)</span>
+    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">target</span> <span class="o">/</span> <span class="s2">&quot;projection_native.json&quot;</span>
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">_read_manifest</span><span class="p">(</span><span class="n">manifest_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_usable_manifest</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="n">manifest</span> <span class="o">=</span> <span class="n">compile_native_projection</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">_is_usable_manifest</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">shared</span> <span class="o">=</span> <span class="n">_resolve_shared_library</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">shared</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s2">&quot;Native projection library is not available.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">NativeProjection</span><span class="p">(</span><span class="n">shared</span><span class="p">),</span> <span class="n">manifest</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">current</span> <span class="o">=</span> <span class="n">_platform_payload</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;load-failed&quot;</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">failed</span> <span class="o">=</span> <span class="n">_manifest_payload</span><span class="p">(</span>
+                <span class="n">current</span><span class="o">=</span><span class="n">current</span><span class="p">,</span>
+                <span class="n">artifacts</span><span class="o">=</span><span class="n">_artifact_entries</span><span class="p">(</span><span class="n">manifest</span><span class="p">),</span>
+                <span class="n">message</span><span class="o">=</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">manifest_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">failed</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">failed</span>
+    <span class="k">if</span> <span class="n">manifest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">manifest</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="n">_manifest_payload</span><span class="p">(</span><span class="n">current</span><span class="o">=</span><span class="n">_platform_payload</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;missing&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">missing</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

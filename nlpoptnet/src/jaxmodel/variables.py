@@ -1,3 +1,5 @@
+"""Variable packing and unpacking utilities for flat JAX model states."""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Union
@@ -8,6 +10,8 @@ Array = jnp.ndarray
 
 @dataclass
 class VariableSpec:
+    """Describe the layout of named variable blocks in a flat vector."""
+
     names: List[str]
     shapes: Dict[str, Tuple[int, ...]]
     sizes: Dict[str, int]
@@ -15,6 +19,7 @@ class VariableSpec:
     total_size: int
 
     def pack(self, values: Dict[str, Array], dtype=jnp.float64) -> Array:
+        """Pack named variable blocks into a single flat vector."""
         parts = []
         for name in self.names:
             if name not in values:
@@ -30,6 +35,7 @@ class VariableSpec:
         return jnp.concatenate(parts, axis=0)
 
     def unpack(self, y: Array) -> Dict[str, Array]:
+        """Unpack a flat vector into the registered variable blocks."""
         if y.ndim != 1:
             raise ValueError(f"Expected flat vector, got shape {y.shape}")
         if y.shape[0] != self.total_size:
@@ -48,24 +54,31 @@ class VariableSpec:
 
 
 class VariableBuilder:
+    """Incrementally build a :class:`VariableSpec`."""
+
     def __init__(self):
         self._names: List[str] = []
         self._shapes: Dict[str, Tuple[int, ...]] = {}
         self._sizes: Dict[str, int] = {}
 
     def add_scalar(self, name: str) -> "VariableBuilder":
+        """Add a scalar variable block."""
         return self.add_block(name, (1,))
 
     def add_vector(self, name: str, n: int) -> "VariableBuilder":
+        """Add a vector variable block."""
         return self.add_block(name, (n,))
 
     def add_matrix(self, name: str, shape: Tuple[int, int]) -> "VariableBuilder":
+        """Add a matrix variable block."""
         return self.add_block(name, shape)
 
     def add_tensor(self, name: str, shape: Tuple[int, ...]) -> "VariableBuilder":
+        """Add a tensor-shaped variable block."""
         return self.add_block(name, shape)
 
     def add_block(self, name: str, shape: Union[int, Tuple[int, ...]]) -> "VariableBuilder":
+        """Register a generic variable block."""
         if isinstance(shape, int):
             shape = (shape,)
         if name in self._shapes:
@@ -81,6 +94,7 @@ class VariableBuilder:
         return self
 
     def build(self) -> VariableSpec:
+        """Finalize and return the variable specification."""
         start = 0
         slices = {}
         for name in self._names:

@@ -1,3 +1,5 @@
+"""High-level public API for defining, training, saving, and using NLPOptNet."""
+
 from __future__ import annotations
 
 import copy
@@ -21,7 +23,7 @@ from opt.aot_artifacts import (
     save_backbone_npz,
 )
 from opt.models.backbone import Backbone
-from opt.native_projection import NativeProjection, compile_native_projection
+from opt.native_projection import load_or_compile_native_projection
 from opt.training import (
     apply_projection_layers,
     build_epoch_fns,
@@ -129,10 +131,15 @@ def _fmt_summary_value(value: Any) -> str:
         return f"{float(value):.6g}"
     return str(value)
 
-def _fmt_time_sec(value):
+def _fmt_time_msec(value):
     if value is None:
         return "N/A"
     return f"{value * 1000:.2f} ms"
+
+def _fmt_time_sec(value):
+    if value is None:
+        return "N/A"
+    return f"{value*1 :.2f} s"
 
 def _block_until_ready(tree):
     return jax.tree_util.tree_map(
@@ -242,6 +249,8 @@ class _InferenceState:
 
 
 class Expression:
+    """Scalar symbolic expression tracked by :class:`NLPOptNet`."""
+
     def __init__(
         self,
         owner: "NLPOptNet",
@@ -368,6 +377,8 @@ class Expression:
 
 
 class VectorExpression:
+    """Vector-valued symbolic expression tracked by :class:`NLPOptNet`."""
+
     def __init__(
         self,
         owner: "NLPOptNet",
@@ -480,6 +491,8 @@ class VectorExpression:
 
 
 class Constant:
+    """Named constant array registered inside an :class:`NLPOptNet` model."""
+
     def __init__(self, owner: "NLPOptNet", name: str, value: Any) -> None:
         self._owner = owner
         self.name = str(name)
@@ -685,6 +698,54 @@ class _ConstraintManager:
 
 
 class NLPOptNet:
+    r"""User-facing interface for symbolic modeling, training, and inference.
+
+    Parameters
+    ----------
+    config:
+        Dictionary of training and projection hyperparameters. Required keys
+        include ``epochs``, ``batch_size``, ``learning_rate``,
+        ``hidden_size``, and ``hidden_layers``. Additional supported keys
+        include ``train_frac``, ``seed``, ``alpha_consistency``, ``cp_mode``,
+        ``cp_iters``, ``cp_tol``, ``safety``, ``knorm_iters``,
+        ``knorm_seed``, ``adjoint_iters``, ``k_layer``, ``use_ruiz``,
+        ``ruiz_iters``, ``dtype``, ``device``, ``jit_warmup``,
+        ``num_samples``, ``y_bound``, ``native_projection``, ``print_every``,
+        and ``verbose``.
+    type:
+        Optional structured problem label such as ``qp``, ``qcqp``, ``nlp``,
+        or ``nonconvex``.
+    name:
+        Optional name used when saving timestamped run directories.
+
+    Notes
+    -----
+    ``NLPOptNet`` is designed around parametric optimization problems of the
+    form
+
+    .. math::
+
+        \begin{aligned}
+            \min_y \quad & f(y, x) \\
+            \text{s.t.}\quad & h(y, x) = 0, \\
+            & g(y, x) \le 0, \\
+            & \ell(x) \le y \le u(x),
+        \end{aligned}
+
+    where :math:`x` is the parameter vector and :math:`y` is the decision
+    vector. The learned model approximates the mapping
+
+    .. math::
+
+        x \mapsto y^\star(x)
+
+    by combining:
+
+    - a symbolic problem definition,
+    - a neural backbone that predicts warm starts,
+    - a projection layer that enforces local feasibility structure.
+    """
+
     def __init__(
         self,
         config: dict[str, Any] | None = None,
@@ -719,6 +780,7 @@ class NLPOptNet:
         self._extracted_problem_path: str | None = None
 
     def add_parameter(self, names: str | Iterable[str]):
+        """Register one or more parameter symbols and return the namespace."""
         for name in _coerce_names(names):
             if name in self.parameter_names or name in self.variable_names:
                 raise ValueError(f"Duplicate symbol name '{name}'.")
@@ -726,6 +788,7 @@ class NLPOptNet:
         return self.parameter
 
     def add_variable(self, names: str | Iterable[str]):
+        """Register one or more decision-variable symbols and return the namespace."""
         for name in _coerce_names(names):
             if name in self.parameter_names or name in self.variable_names:
                 raise ValueError(f"Duplicate symbol name '{name}'.")
@@ -733,6 +796,7 @@ class NLPOptNet:
         return self.variable
 
     def objective(self, value) -> "NLPOptNet":
+        """Set the scalar objective from an expression or callable."""
         if callable(value):
             signature = inspect.signature(value)
             if len(signature.parameters) == 0:
@@ -749,15 +813,19 @@ class NLPOptNet:
         return self
 
     def matrix(self, values) -> Constant:
+        """Register a constant matrix and return its wrapper."""
         return self._register_constant(values)
 
     def vector(self, values) -> Constant:
+        """Register a constant vector and return its wrapper."""
         return self._register_constant(values)
 
     def tensor(self, values) -> Constant:
+        """Register a constant tensor and return its wrapper."""
         return self._register_constant(values)
 
     def extract(self, path: str | Path) -> dict[str, Constant]:
+        """Load constants from a ``problem.npz`` file into the model."""
         target = resolve_path(path)
         if not target.exists():
             raise FileNotFoundError(f"problem.npz not found: {target}")
@@ -781,11 +849,13 @@ class NLPOptNet:
         return extracted
 
     def dataset(self, *, parameters: str | Path) -> "NLPOptNet":
+        """Use a CSV file of parameter samples as the dataset source."""
         self._dataset_spec = {"parameters": str(parameters)}
         self._region_spec = None
         return self
 
     def simplex(self, *constraints, M=None, num_samples: int | None = None) -> "NLPOptNet":
+        """Sample parameters from a simplex or more general polytope region."""
         if M is not None and constraints:
             raise ValueError("Provide either simplex constraints or M, not both.")
         self._dataset_spec = None
@@ -813,6 +883,7 @@ class NLPOptNet:
         return self
 
     def box(self, *, lower=None, upper=None, num_samples: int | None = None) -> "NLPOptNet":
+        """Sample parameters from an axis-aligned box."""
         self._dataset_spec = None
         n_x = len(self.parameter_names)
         if n_x <= 0:
@@ -842,6 +913,7 @@ class NLPOptNet:
         return self
 
     def parameter_region(self, type: str):
+        """Validate or activate a parameter-region mode."""
         normalized = str(type).strip().lower()
         if normalized == "data":
             if self._dataset_spec is None:
@@ -857,6 +929,7 @@ class NLPOptNet:
         return self
 
     def lin(self, matrix, expr):
+        """Form an affine expression ``A @ expr``."""
         const = self._ensure_constant(matrix)
         vector = self._as_vector_expr(expr)
         arr = np.asarray(const.value, dtype=np.float64)
@@ -890,6 +963,7 @@ class NLPOptNet:
         raise ValueError("lin(...) expects a 1D or 2D matrix/vector.")
 
     def batch_lin(self, matrix, expr):
+        """Form a batched affine vector expression."""
         const = self._ensure_constant(matrix)
         vector = self._as_vector_expr(expr)
         arr = np.asarray(const.value, dtype=np.float64)
@@ -910,6 +984,7 @@ class NLPOptNet:
         )
 
     def quad(self, matrix, expr):
+        """Form a quadratic scalar expression ``expr^T Q expr``."""
         const = self._ensure_constant(matrix)
         vector = self._as_vector_expr(expr)
         arr = np.asarray(const.value, dtype=np.float64)
@@ -922,6 +997,7 @@ class NLPOptNet:
         )
 
     def batch_quad(self, tensor, expr):
+        """Form batched quadratic expressions from a rank-3 tensor."""
         const = self._ensure_constant(tensor)
         vector = self._as_vector_expr(expr)
         arr = np.asarray(const.value, dtype=np.float64)
@@ -935,6 +1011,7 @@ class NLPOptNet:
         )
 
     def batch_exp(self, expr):
+        """Apply elementwise exponential to a vector expression."""
         vector = self._as_vector_expr(expr)
         return VectorExpression(
             self,
@@ -944,24 +1021,31 @@ class NLPOptNet:
         )
 
     def sin(self, expr):
+        """Apply elementwise sine to a scalar or vector expression."""
         return self._elementwise(expr, jnp.sin, "sin")
 
     def cos(self, expr):
+        """Apply elementwise cosine to a scalar or vector expression."""
         return self._elementwise(expr, jnp.cos, "cos")
 
     def exp(self, expr):
+        """Apply elementwise exponential to a scalar or vector expression."""
         return self._elementwise(expr, jnp.exp, "exp")
 
     def log(self, expr):
+        """Apply elementwise logarithm to a scalar or vector expression."""
         return self._elementwise(expr, jnp.log, "log")
 
     def sqrt(self, expr):
+        """Apply elementwise square root to a scalar or vector expression."""
         return self._elementwise(expr, jnp.sqrt, "sqrt")
 
     def abs(self, expr):
+        """Apply elementwise absolute value to a scalar or vector expression."""
         return self._elementwise(expr, jnp.abs, "abs")
 
     def build(self) -> "NLPOptNet":
+        """Build the symbolic model, dataset split, and train-time state."""
         if self._objective_expr is None and self._objective_callable is None:
             raise ValueError("Set the objective before build().")
         if not self.parameter_names:
@@ -973,7 +1057,9 @@ class NLPOptNet:
             raise ValueError(
                 "Missing required config values: "
                 + ", ".join(missing_config)
-                + ". Required values are epochs, batch_size, learning_rate, hidden_size, and hidden_layers."
+                + ".\nRequired values are epochs, batch_size, learning_rate, hidden_size, and hidden_layers.\n"
+                + "Optional values are train_frac, seed, alpha_consistency, cp_mode, cp_iters, cp_tol, safety, knorm_iters, knorm_seed,\n"
+                + "adjoint_iters, k_layer, use_ruiz, ruiz_iters, dtype, print_every, device and verbose"
             )
         _apply_config_aliases(self.config)
 
@@ -1093,6 +1179,7 @@ class NLPOptNet:
         return None
 
     def optimize(self) -> dict[str, Any]:
+        """Train the model, save artifacts, and return run metadata."""
         if self._build_state is None:
             self.build()
         assert self._build_state is not None
@@ -1235,9 +1322,6 @@ class NLPOptNet:
         metadata_path = run_dir / "metadata.json"
         constants_path = run_dir / "problem_constants.npz"
 
-        # if bool(self.config.get("verbose", True)):
-        #     print("💾 Saving artifacts...")
-
         write_csv_matrix(parameters_path, build_state.X, headers=self.parameter_names)
         write_csv_matrix(predictions_path, np.asarray(predictions, dtype=np.float64), headers=self.variable_names)
         self._write_history_csv(history_path, history)
@@ -1256,18 +1340,12 @@ class NLPOptNet:
         np.savez(constants_path, **self._constants)
         if self._extracted_problem_path is not None:
             shutil.copy2(resolve_path(self._extracted_problem_path), run_dir / "problem.npz")
-        native_manifest = compile_native_projection(run_dir)
+        native_projection, native_manifest = load_or_compile_native_projection(run_dir)
         native_projection_path = (
             native_manifest.get("shared_library")
             if native_manifest.get("status") == "ok"
             else None
         )
-        native_projection = None
-        if native_projection_path is not None:
-            try:
-                native_projection = NativeProjection(run_dir / str(native_projection_path))
-            except Exception:
-                native_projection = None
 
         lower_M, lower_c, upper_M, upper_c = self._build_box_bounds(
             n_x=len(self.parameter_names),
@@ -1312,12 +1390,7 @@ class NLPOptNet:
             "native_projection": native_manifest,
         }
         write_json(metadata_path, metadata)
-        # if bool(self.config.get("verbose", True)):
-        #     print("✅ Artifacts saved")
-        
-        # if bool(self.config.get("verbose", True)):
-        #     print("⏳ Estimating inference time (this may take a while)...")
-        
+
         summary.update(
             self._estimate_inference_times(
                 metadata_path=metadata_path,
@@ -1327,8 +1400,7 @@ class NLPOptNet:
         )
 
         if bool(self.config.get("verbose", True)):
-        #     print("✅ Inference time estimation done")
-            print("✅ Done!!!")
+            print("Done.")
         
         write_json(summary_path, summary)
 
@@ -1364,6 +1436,7 @@ class NLPOptNet:
         }
 
     def load(self, metadata_path: str | Path, *, verbose: bool | None = None) -> "NLPOptNet":
+        """Load a previously saved serializable model run from metadata."""
         metadata_file = resolve_path(metadata_path)
         with open(metadata_file, "r", encoding="utf-8") as fh:
             payload = json.load(fh)
@@ -1419,15 +1492,7 @@ class NLPOptNet:
             backbone_file = metadata_file.parent / str(backbone_name)
             if backbone_file.exists():
                 native_backbone = load_backbone_npz(backbone_file)
-        native_projection = None
-        native_name = payload.get("artifacts", {}).get("native_projection")
-        if native_name is not None:
-            native_file = metadata_file.parent / str(native_name)
-            if native_file.exists():
-                try:
-                    native_projection = NativeProjection(native_file)
-                except Exception:
-                    native_projection = None
+        native_projection, native_manifest = load_or_compile_native_projection(metadata_file.parent)
 
         self._metadata_path = str(metadata_file)
         self._inference_state = _InferenceState(
@@ -1448,6 +1513,7 @@ class NLPOptNet:
         if verbose:
             from datetime import datetime
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            native_message = native_manifest.get("message") if isinstance(native_manifest, dict) else None
 
             print("\n" + "="*120)
             print("✅ Model Loaded Successfully")
@@ -1455,11 +1521,14 @@ class NLPOptNet:
             print(f"Model Name   : {self.name}")
             print(f"Location     : {metadata_file.parent}")
             print(f"Time         : {now}")
+            if native_message:
+                print(f"Native       : {native_message}")
             print("="*120 + "\n")
 
         return self
 
     def predict(self, values, *, projection_backend: str = "auto") -> np.ndarray:
+        """Predict projected variables for one sample or a batch of samples."""
         if self._inference_state is None:
             raise RuntimeError("Please train or load the model before calling predict().")
         data = np.asarray(values, dtype=np.float64)
@@ -1495,6 +1564,7 @@ class NLPOptNet:
         return out[0] if squeeze else out
 
     def summary(self) -> dict[str, Any]:
+        """Print a compact summary of the current completed or loaded run."""
         run_dir = self._run_dir()
         summary_path = run_dir / "summary.json"
         if not summary_path.exists():
@@ -1511,13 +1581,12 @@ class NLPOptNet:
             ("No. of Train Samples", payload.get("train_samples")),
             ("No. of Validation Samples", payload.get("val_samples")),
             ("Maximum Constraint Violation", payload.get("max_violation")),
-            ("Training Time", payload.get("training_wall_time_sec")),
-            ("Est. JAX Single Inference Time", _fmt_time_sec(payload.get("estimated_jax_single_inference_time_sec"))),
-            ("Est. Native Single Inference Time", _fmt_time_sec(payload.get("estimated_native_single_inference_time_sec"))),
-            ("Est. JAX Batch Inference Time", _fmt_time_sec(payload.get("estimated_jax_batch_inference_time_sec"))),]
-        print("📊 NLPOptNet Summary")
+            ("Training Time", _fmt_time_sec(payload.get("training_wall_time_sec"))),
+            ("Est. JAX Single Inference Time", _fmt_time_msec(payload.get("estimated_jax_single_inference_time_sec"))),
+            ("Est. Native Single Inference Time", _fmt_time_msec(payload.get("estimated_native_single_inference_time_sec"))),
+            ("Est. JAX Batch Inference Time", _fmt_time_msec(payload.get("estimated_jax_batch_inference_time_sec"))),]
+        print("📊 NLPOptNet :: Training Summary")
         print("-" * 60)
-
         # compute max width of keys
         max_key_len = max(len(key) for key, _ in rows)
 
@@ -1525,26 +1594,124 @@ class NLPOptNet:
             print(f"{key:<{max_key_len}} : {_fmt_summary_value(value)}")
         print("-" * 60)
 
-    def plot_history(self, *, show: bool = True, save_dir: str | Path | None = None):
+        note_msg = ("Note: Inference time estimations are based on\n"
+            "microbenchmarking on the hardware used during\n"
+            "training and may vary across different hardware\n"
+            "and runtime conditions."
+            )
+        print(note_msg)
+
+    # def plot_history(self, *, show: bool = True, save_dir: str | Path | None = None):
+    #     history = self._read_history()
+    #     epochs = history["epoch"]
+    #     tr_obj = history["train_objective"]
+    #     val_obj = history["val_objective"]
+    #     tr_violation = np.maximum(self._history_column(history, "train_eq_violation"), self._history_column(history, "train_ineq_violation"))
+    #     val_violation = np.maximum(self._history_column(history, "val_eq_violation"), self._history_column(history, "val_ineq_violation"))
+    #     tr_violation = np.maximum(tr_violation, 1e-16)
+    #     val_violation = np.maximum(val_violation, 1e-16)
+
+    #     import os
+
+    #     os.environ.setdefault("MPLCONFIGDIR", "/tmp")
+    #     import matplotlib.pyplot as plt
+    #     from matplotlib import font_manager
+
+    #     font_names = {font.name for font in font_manager.fontManager.ttflist}
+    #     font_family = "Arial" if "Arial" in font_names else "DejaVu Sans"
+
+    #     with plt.style.context("ggplot"):
+    #         plt.rcParams.update(
+    #             {
+    #                 "font.family": font_family,
+    #                 "font.size": 32,
+    #                 "axes.titlesize": 32,
+    #                 "axes.labelsize": 24,
+    #                 "legend.fontsize": 24,
+    #                 "xtick.labelsize": 20,
+    #                 "ytick.labelsize": 20,
+    #             }
+    #         )
+    #         fig, axes = plt.subplots(1, 2, figsize=(20, 6), facecolor="#E5E5E5")
+    #         axes[0].plot(epochs, tr_obj, linewidth=2, label="Train Objective")
+    #         axes[0].plot(epochs, val_obj, linewidth=2, linestyle="--", label="Validation Objective")
+    #         axes[0].set_xlabel("Epoch")
+    #         axes[0].set_ylabel("Objective")
+    #         axes[0].set_title("Objective Evolution")
+    #         axes[0].legend()
+    #         axes[0].grid(True, alpha=0.3)
+
+    #         axes[1].plot(epochs, tr_violation, linewidth=2, label="Train Violation")
+    #         axes[1].plot(epochs, val_violation, linewidth=2, linestyle="--", label="Validation Violation")
+    #         axes[1].set_xlabel("Epoch")
+    #         axes[1].set_ylabel("Max. Violation")
+    #         axes[1].set_title("Constraint Violation")
+    #         axes[1].set_yscale("log")
+    #         axes[1].legend()
+    #         axes[1].grid(True, alpha=0.3)
+
+    #         fig.tight_layout()
+    #         if save_dir is not None:
+    #             target = resolve_path(save_dir)
+    #             target.mkdir(parents=True, exist_ok=True)
+    #             fig.savefig(target / "history_plot.png", dpi=600, bbox_inches="tight")
+    #         if show:
+    #             plt.show()
+    #     return fig, axes
+
+    def plot_history(
+        self,
+        *,
+        show: bool = True,
+        save_dir: str | Path | None = None,
+        bg: str = "grey",   # "grey" (default) or "white"
+    ):
+        """Plot and save objective and violation history curves."""
         history = self._read_history()
+
         epochs = history["epoch"]
         tr_obj = history["train_objective"]
         val_obj = history["val_objective"]
-        tr_violation = np.maximum(self._history_column(history, "train_eq_violation"), self._history_column(history, "train_ineq_violation"))
-        val_violation = np.maximum(self._history_column(history, "val_eq_violation"), self._history_column(history, "val_ineq_violation"))
+
+        tr_violation = np.maximum(
+            self._history_column(history, "train_eq_violation"),
+            self._history_column(history, "train_ineq_violation"),
+        )
+        val_violation = np.maximum(
+            self._history_column(history, "val_eq_violation"),
+            self._history_column(history, "val_ineq_violation"),
+        )
+
         tr_violation = np.maximum(tr_violation, 1e-16)
         val_violation = np.maximum(val_violation, 1e-16)
 
         import os
-
         os.environ.setdefault("MPLCONFIGDIR", "/tmp")
+
         import matplotlib.pyplot as plt
         from matplotlib import font_manager
 
+        # -------------------------------
+        # Font handling
+        # -------------------------------
         font_names = {font.name for font in font_manager.fontManager.ttflist}
         font_family = "Arial" if "Arial" in font_names else "DejaVu Sans"
 
-        with plt.style.context("ggplot"):
+        # -------------------------------
+        # Background + style selection
+        # -------------------------------
+        bg_colors = {
+            "grey": "#E5E5E5",
+            "white": "#FFFFFF",
+        }
+        fig_bg = bg_colors.get(bg, "#E5E5E5")
+
+        style = "default" if bg == "white" else "ggplot"
+
+        # -------------------------------
+        # Plotting
+        # -------------------------------
+        with plt.style.context(style):
             plt.rcParams.update(
                 {
                     "font.family": font_family,
@@ -1556,17 +1723,37 @@ class NLPOptNet:
                     "ytick.labelsize": 20,
                 }
             )
-            fig, axes = plt.subplots(1, 2, figsize=(20, 6), facecolor="#E5E5E5")
+
+            fig, axes = plt.subplots(1, 2, figsize=(20, 6), facecolor=fig_bg)
+
+            # Ensure axes match background
+            for ax in axes:
+                ax.set_facecolor(fig_bg)
+
+            # -------------------------------
+            # Objective plot
+            # -------------------------------
             axes[0].plot(epochs, tr_obj, linewidth=2, label="Train Objective")
-            axes[0].plot(epochs, val_obj, linewidth=2, linestyle="--", label="Validation Objective")
+            axes[0].plot(
+                epochs, val_obj, linewidth=2, linestyle="--", label="Validation Objective"
+            )
             axes[0].set_xlabel("Epoch")
             axes[0].set_ylabel("Objective")
             axes[0].set_title("Objective Evolution")
             axes[0].legend()
             axes[0].grid(True, alpha=0.3)
 
+            # -------------------------------
+            # Constraint violation plot
+            # -------------------------------
             axes[1].plot(epochs, tr_violation, linewidth=2, label="Train Violation")
-            axes[1].plot(epochs, val_violation, linewidth=2, linestyle="--", label="Validation Violation")
+            axes[1].plot(
+                epochs,
+                val_violation,
+                linewidth=2,
+                linestyle="--",
+                label="Validation Violation",
+            )
             axes[1].set_xlabel("Epoch")
             axes[1].set_ylabel("Max. Violation")
             axes[1].set_title("Constraint Violation")
@@ -1575,12 +1762,22 @@ class NLPOptNet:
             axes[1].grid(True, alpha=0.3)
 
             fig.tight_layout()
-            if save_dir is not None:
-                target = resolve_path(save_dir)
-                target.mkdir(parents=True, exist_ok=True)
-                fig.savefig(target / "history_plot.png", dpi=600, bbox_inches="tight")
+
+            # -------------------------------
+            # Save
+            # -------------------------------
+            target = self._run_dir() if save_dir is None else resolve_path(save_dir)
+            target.mkdir(parents=True, exist_ok=True)
+            fig.savefig(
+                target / "training_history.png",
+                dpi=600,
+                bbox_inches="tight",
+                facecolor=fig_bg,  # ensure saved background matches
+            )
+
             if show:
                 plt.show()
+
         return fig, axes
 
     def _run_dir(self) -> Path:

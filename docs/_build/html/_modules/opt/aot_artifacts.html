@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>opt.aot_artifacts &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../citations.html">Citations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">opt.aot_artifacts</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for opt.aot_artifacts</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Artifact helpers for exporting backbone weights and derivative evaluators.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_dense_key</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the Flax parameter-tree key for a dense layer index.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Dense_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<div class="viewcode-block" id="save_backbone_npz">
+<a class="viewcode-back" href="../../api/core/opt/aot_artifacts.html#opt.aot_artifacts.save_backbone_npz">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_backbone_npz</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">p</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">me</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">mi</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save Flax dense weights as a plain, pickle-free ``.npz`` artifact.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">arrays</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">dense_index</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)):</span>
+        <span class="n">dense</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">_dense_key</span><span class="p">(</span><span class="n">dense_index</span><span class="p">)]</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hidden_</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dense</span><span class="p">[</span><span class="s2">&quot;kernel&quot;</span><span class="p">])</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hidden_</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dense</span><span class="p">[</span><span class="s2">&quot;bias&quot;</span><span class="p">])</span>
+        <span class="n">dense_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">y_dense</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">_dense_key</span><span class="p">(</span><span class="n">dense_index</span><span class="p">)]</span>
+    <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;y_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y_dense</span><span class="p">[</span><span class="s2">&quot;kernel&quot;</span><span class="p">])</span>
+    <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;y_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y_dense</span><span class="p">[</span><span class="s2">&quot;bias&quot;</span><span class="p">])</span>
+    <span class="n">dense_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">me</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">lam_dense</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">_dense_key</span><span class="p">(</span><span class="n">dense_index</span><span class="p">)]</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">lam_dense</span><span class="p">[</span><span class="s2">&quot;kernel&quot;</span><span class="p">])</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">lam_dense</span><span class="p">[</span><span class="s2">&quot;bias&quot;</span><span class="p">])</span>
+        <span class="n">dense_index</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">),</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">mi</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">mu_dense</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">_dense_key</span><span class="p">(</span><span class="n">dense_index</span><span class="p">)]</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mu_dense</span><span class="p">[</span><span class="s2">&quot;kernel&quot;</span><span class="p">])</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mu_dense</span><span class="p">[</span><span class="s2">&quot;bias&quot;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_kernel&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">),</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_bias&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;nlpoptnet-backbone-v1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;p&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">),</span>
+        <span class="s2">&quot;n&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">),</span>
+        <span class="s2">&quot;me&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">me</span><span class="p">),</span>
+        <span class="s2">&quot;mi&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">mi</span><span class="p">),</span>
+        <span class="s2">&quot;hidden_size&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">),</span>
+        <span class="s2">&quot;hidden_dim&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">),</span>
+        <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">dtype</span><span class="p">),</span>
+        <span class="s2">&quot;activation&quot;</span><span class="p">:</span> <span class="s2">&quot;tanh&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;metadata_json&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="o">**</span><span class="n">arrays</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">metadata</span></div>
+
+
+
+<div class="viewcode-block" id="load_backbone_npz">
+<a class="viewcode-back" href="../../api/core/opt/aot_artifacts.html#opt.aot_artifacts.load_backbone_npz">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_backbone_npz</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a backbone artifact created by :func:`save_backbone_npz`.&quot;&quot;&quot;</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">loaded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">loaded</span><span class="p">[</span><span class="s2">&quot;metadata_json&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()))</span>
+    <span class="n">arrays</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">loaded</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">loaded</span><span class="o">.</span><span class="n">files</span> <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s2">&quot;metadata_json&quot;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">,</span> <span class="s2">&quot;arrays&quot;</span><span class="p">:</span> <span class="n">arrays</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="backbone_forward_numpy">
+<a class="viewcode-back" href="../../api/core/opt/aot_artifacts.html#opt.aot_artifacts.backbone_forward_numpy">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">backbone_forward_numpy</span><span class="p">(</span><span class="n">artifact</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">x_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the saved backbone in NumPy without requiring Flax at inference time.&quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">artifact</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+    <span class="n">arrays</span> <span class="o">=</span> <span class="n">artifact</span><span class="p">[</span><span class="s2">&quot;arrays&quot;</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x_values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">x</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;hidden_dim&quot;</span><span class="p">])):</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">h</span> <span class="o">@</span> <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hidden_</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">_kernel&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;hidden_</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">_bias&quot;</span><span class="p">])</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">h</span> <span class="o">@</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;y_kernel&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;y_bias&quot;</span><span class="p">]</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="n">h</span> <span class="o">@</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_kernel&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;lam_bias&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;me&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">h</span> <span class="o">@</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_kernel&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">arrays</span><span class="p">[</span><span class="s2">&quot;mu_bias&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;mi&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">y</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">mu</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_export_one</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">specs</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">out_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export one JAX function to a serialized StableHLO artifact.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">export</span>
+
+    <span class="n">exported</span> <span class="o">=</span> <span class="n">export</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="n">fn</span><span class="p">))(</span><span class="o">*</span><span class="n">specs</span><span class="p">)</span>
+    <span class="n">serialization</span> <span class="o">=</span> <span class="s2">&quot;jax_exported_flatbuffer&quot;</span>
+    <span class="n">serialization_error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">exported</span><span class="o">.</span><span class="n">serialize</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="c1"># jax.export creates StableHLO portable artifact bytes before the</span>
+        <span class="c1"># optional flatbuffer wrapper is needed. Persist those bytes rather</span>
+        <span class="c1"># than falling back to compiler_ir/debug text.</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">exported</span><span class="o">.</span><span class="n">mlir_module_serialized</span><span class="p">)</span>
+        <span class="n">serialization</span> <span class="o">=</span> <span class="s2">&quot;stablehlo_portable_artifact&quot;</span>
+        <span class="n">serialization_error</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.stablehlo&quot;</span>
+    <span class="p">(</span><span class="n">out_dir</span> <span class="o">/</span> <span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="n">filename</span><span class="p">,</span>
+        <span class="s2">&quot;function_name&quot;</span><span class="p">:</span> <span class="n">exported</span><span class="o">.</span><span class="n">fun_name</span><span class="p">,</span>
+        <span class="s2">&quot;in_avals&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">aval</span><span class="p">)</span> <span class="k">for</span> <span class="n">aval</span> <span class="ow">in</span> <span class="n">exported</span><span class="o">.</span><span class="n">in_avals</span><span class="p">],</span>
+        <span class="s2">&quot;out_avals&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">aval</span><span class="p">)</span> <span class="k">for</span> <span class="n">aval</span> <span class="ow">in</span> <span class="n">exported</span><span class="o">.</span><span class="n">out_avals</span><span class="p">],</span>
+        <span class="s2">&quot;calling_convention_version&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">exported</span><span class="o">.</span><span class="n">calling_convention_version</span><span class="p">),</span>
+        <span class="s2">&quot;serialization&quot;</span><span class="p">:</span> <span class="n">serialization</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">serialization_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;serialization_error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">serialization_error</span>
+    <span class="k">return</span> <span class="n">payload</span>
+
+
+<div class="viewcode-block" id="export_projection_derivatives">
+<a class="viewcode-back" href="../../api/core/opt/aot_artifacts.html#opt.aot_artifacts.export_projection_derivatives">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">export_projection_derivatives</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">out_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">p</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="p">,</span>
+    <span class="n">param_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist StableHLO derivative evaluators for archival and reuse.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_dir</span><span class="p">)</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x_spec</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">ShapeDtypeStruct</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">),),</span> <span class="n">dtype</span><span class="p">)</span>
+    <span class="n">y_spec</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">ShapeDtypeStruct</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">),),</span> <span class="n">dtype</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">params</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">param_name</span><span class="p">:</span> <span class="n">x</span><span class="p">}</span>
+
+    <span class="n">exports</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;objective_gradient&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;objective_gradient&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">grad_y_objective</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;objective_diag_hessian&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;objective_diag_hessian&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">diag_hess_y_objective</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;equality_jacobian&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;equality_jacobian&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">jac_y_eq</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;inequality_jacobian&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;inequality_jacobian&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">jac_y_ineq</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;equality_residual&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;equality_residual&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">eq_residual</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;inequality_residual&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;inequality_residual&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">ineq_residual</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,</span> <span class="n">y_spec</span><span class="p">),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;lower_bounds&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;lower_bounds&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">lower_bounds</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;upper_bounds&quot;</span><span class="p">:</span> <span class="n">_export_one</span><span class="p">(</span>
+            <span class="s2">&quot;upper_bounds&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">upper_bounds</span><span class="p">(</span><span class="n">params</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span>
+            <span class="p">(</span><span class="n">x_spec</span><span class="p">,),</span>
+            <span class="n">target</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;nlpoptnet-stablehlo-derivatives-v1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;jax_version&quot;</span><span class="p">:</span> <span class="n">jax</span><span class="o">.</span><span class="n">__version__</span><span class="p">,</span>
+        <span class="s2">&quot;dtype&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)),</span>
+        <span class="s2">&quot;parameter_shape&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">)],</span>
+        <span class="s2">&quot;variable_shape&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">)],</span>
+        <span class="s2">&quot;exports&quot;</span><span class="p">:</span> <span class="n">exports</span><span class="p">,</span>
+        <span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;These files are serialized jax.export artifacts, not compiler_ir/debug text.&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">target</span> <span class="o">/</span> <span class="s2">&quot;manifest.json&quot;</span>
+    <span class="n">manifest_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">manifest</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

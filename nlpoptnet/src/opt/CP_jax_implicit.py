@@ -1,3 +1,5 @@
+"""Implicit-differentiation wrappers for the Chambolle-Pock projection layers."""
+
 import jax
 import jax.numpy as jnp
 from jax import tree_util
@@ -15,6 +17,7 @@ jax.config.update("jax_enable_x64", True)
 # steps = (tau, sigma, theta, P) treated as constants in backward
 # ============================================================
 def _cp_step_fixed(z, params, steps):
+    """Apply one fixed-step CP iteration to the state tuple ``z``."""
     y, lam, mu, ybar = z
     Q_diag, c, A, b, C, d, l, u = params
     tau, sigma, theta, P = steps
@@ -58,6 +61,7 @@ def _cp_step_fixed(z, params, steps):
 # NOTE: this is for backward linearization; tau/sigma/theta treated constant.
 # ============================================================
 def _steps_fixed(Q_diag, A, C, *, safety, knorm_iters, knorm_seed):
+    """Build frozen step sizes used for implicit differentiation."""
     Q_diag = jnp.asarray(Q_diag)
     A = jnp.asarray(A)
     C = jnp.asarray(C)
@@ -96,6 +100,7 @@ def _steps_fixed(Q_diag, A, C, *, safety, knorm_iters, knorm_seed):
 # (We can reuse the same _steps_fixed or you can use a different init rule.)
 # ============================================================
 def _steps_for_accel_backward(Q_diag, A, C, *, safety, knorm_iters, knorm_seed):
+    """Choose the frozen backward step-size policy for accelerated CP."""
     # simplest + stable: same as fixed rule
     return _steps_fixed(Q_diag, A, C, safety=safety, knorm_iters=knorm_iters, knorm_seed=knorm_seed)
 
@@ -111,6 +116,7 @@ def CP_fixed_implicit(
     y0=None, lam0=None, mu0=None,
     adjoint_iters: int = 50,
 ):
+    """Implicitly differentiated wrapper around :func:`CP_fixed`."""
     if (y0 is None) or (lam0 is None) or (mu0 is None):
         raise ValueError(
             "Pass warm-start arrays y0/lam0/mu0 (no None). "
@@ -127,6 +133,7 @@ def CP_fixed_implicit(
 def _CP_fixed_implicit_fwd(Q_diag, c, A, b, C, d, l, u,
                             safety, knorm_iters, knorm_seed, max_iter, tol,
                             y0=None, lam0=None, mu0=None, adjoint_iters: int = 50):
+    """Forward pass for the fixed-step implicit CP layer."""
     # forward solve (your CP)
     y, lam, mu = CP_fixed(Q_diag, c, A, b, C, d, l, u,
                           safety=safety, knorm_iters=knorm_iters, knorm_seed=knorm_seed,
@@ -153,6 +160,7 @@ def _CP_fixed_implicit_fwd(Q_diag, c, A, b, C, d, l, u,
 
 
 def _CP_fixed_implicit_bwd(res, cot):
+    """Backward pass for the fixed-step implicit CP layer."""
     zstar, params, steps, adjoint_iters = res
     gy, glam, gmu = cot
 
@@ -226,6 +234,7 @@ def CP_accelerated_implicit(
     y0=None, lam0=None, mu0=None,
     adjoint_iters: int = 50,
 ):
+    """Implicitly differentiated wrapper around :func:`CP_accelerated`."""
     if (y0 is None) or (lam0 is None) or (mu0 is None):
         raise ValueError(
             "Pass warm-start arrays y0/lam0/mu0 (no None). "
@@ -240,6 +249,7 @@ def CP_accelerated_implicit(
 def _CP_accelerated_implicit_fwd(Q_diag, c, A, b, C, d, l, u,
                                 safety, knorm_iters, knorm_seed, max_iter, tol,
                                 y0, lam0, mu0, adjoint_iters):
+    """Forward pass for the accelerated implicit CP layer."""
     # ---- forward solve ----
     y, lam, mu = CP_accelerated(Q_diag, c, A, b, C, d, l, u,
                                 safety=safety, knorm_iters=knorm_iters, knorm_seed=knorm_seed,
@@ -267,6 +277,7 @@ def _CP_accelerated_implicit_fwd(Q_diag, c, A, b, C, d, l, u,
 
 
 def _CP_accelerated_implicit_bwd(res, cot):
+    """Backward pass for the accelerated implicit CP layer."""
     zstar, params, steps, adjoint_iters = res
     gy, glam, gmu = cot
 

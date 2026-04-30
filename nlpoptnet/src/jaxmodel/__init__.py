@@ -1,3 +1,5 @@
+"""Public exports for the symbolic JAX modeling layer used by NLPOptNet."""
+
 from .variables import VariableBuilder, VariableSpec
 from .parameters import ParameterSpec
 from .bounds import BoundSpec

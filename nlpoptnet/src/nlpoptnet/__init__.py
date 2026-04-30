@@ -1,3 +1,5 @@
+"""Public package exports for the high-level NLPOptNet API."""
+
 from __future__ import annotations
 
 from .api import NLPOptNet, ProblemBuilder

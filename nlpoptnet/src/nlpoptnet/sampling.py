@@ -1,3 +1,5 @@
+"""Sampling, CSV I/O, and dataset-splitting helpers for NLPOptNet."""
+
 from __future__ import annotations
 
 import csv
@@ -9,6 +11,7 @@ from scipy.optimize import linprog
 
 
 def _can_parse_float_row(row: Sequence[str]) -> bool:
+    """Return whether every cell in the row can be parsed as a float."""
     try:
         [float(value) for value in row]
     except ValueError:
@@ -17,6 +20,7 @@ def _can_parse_float_row(row: Sequence[str]) -> bool:
 
 
 def load_csv_matrix(path: str | Path, expected_columns: list[str]) -> np.ndarray:
+    """Load a numeric CSV matrix, optionally reordering columns by header name."""
     target = Path(path).expanduser().resolve()
     if not target.exists():
         raise FileNotFoundError(f"CSV file not found: {target}")
@@ -55,6 +59,7 @@ def load_csv_matrix(path: str | Path, expected_columns: list[str]) -> np.ndarray
 
 
 def write_csv_matrix(path: str | Path, data: np.ndarray, headers: list[str] | None = None) -> None:
+    """Write a numeric matrix to CSV with optional column headers."""
     target = Path(path).expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
     matrix = np.asarray(data, dtype=np.float64)
@@ -66,6 +71,7 @@ def write_csv_matrix(path: str | Path, data: np.ndarray, headers: list[str] | No
 
 
 def split_train_val(X: np.ndarray, *, train_frac: float, seed: int):
+    """Split samples into train and validation index arrays."""
     X_np = np.asarray(X, dtype=np.float64)
     if X_np.ndim != 2:
         raise ValueError("X must be a 2D array.")
@@ -84,6 +90,7 @@ def split_train_val(X: np.ndarray, *, train_frac: float, seed: int):
 
 
 def sample_box(lower: np.ndarray, upper: np.ndarray, *, num_samples: int, seed: int) -> np.ndarray:
+    """Sample uniformly from an axis-aligned box."""
     low = np.asarray(lower, dtype=np.float64).reshape(-1)
     high = np.asarray(upper, dtype=np.float64).reshape(-1)
     if low.shape != high.shape:
@@ -95,6 +102,7 @@ def sample_box(lower: np.ndarray, upper: np.ndarray, *, num_samples: int, seed: 
 
 
 def find_feasible_point(A: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Find a feasible point for the halfspace system ``A x <= b``."""
     A_np = np.asarray(A, dtype=np.float64)
     b_np = np.asarray(b, dtype=np.float64).reshape(-1)
     if A_np.ndim != 2:
@@ -123,6 +131,7 @@ def hit_and_run_samples(
     burn_in: int | None = None,
     thinning: int | None = None,
 ) -> np.ndarray:
+    """Sample approximately uniformly from a polytope via hit-and-run."""
     A_np = np.asarray(A, dtype=np.float64)
     b_np = np.asarray(b, dtype=np.float64).reshape(-1)
     if A_np.ndim != 2 or A_np.shape[0] != b_np.shape[0]:

@@ -1,0 +1,304 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration Options &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=8110c214" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Defining the Problem" href="defining-the-problem.html" />
+    <link rel="prev" title="User Guide" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">User Guide</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Configuration Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="defining-the-problem.html">Defining the Problem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="defining-parameter-space.html">Defining Parameter Space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training-and-inference.html">Training and Inference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../citations.html">Citations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">User Guide</a></li>
+      <li class="breadcrumb-item active">Configuration Options</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/SOULS-TAMU/NLPOpt-Net/blob/main/docs/user-guide/configuration-options.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration-options">
+<h1>Configuration Options<a class="headerlink" href="#configuration-options" title="Link to this heading"></a></h1>
+<p>The following configuration options are available in NLPOpt-Net:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Default Value</p></th>
+<th class="head"><p>Required</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">epochs</span></code></p></td>
+<td><p>Number of training epochs</p></td>
+<td><p>—</p></td>
+<td><p>Yes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code></p></td>
+<td><p>Number of samples per training batch</p></td>
+<td><p>—</p></td>
+<td><p>Yes</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">learning_rate</span></code></p></td>
+<td><p>Learning rate for optimizer</p></td>
+<td><p>—</p></td>
+<td><p>Yes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hidden_size</span></code></p></td>
+<td><p>Width of hidden layers in the neural network</p></td>
+<td><p>—</p></td>
+<td><p>Yes</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hidden_layers</span></code></p></td>
+<td><p>Number of hidden layers in the neural network</p></td>
+<td><p>—</p></td>
+<td><p>Yes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">train_frac</span></code></p></td>
+<td><p>Fraction of data used for training (rest for validation)</p></td>
+<td><p>0.8</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p>Random seed for reproducibility</p></td>
+<td><p>42</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha_consistency</span></code></p></td>
+<td><p>Weight for consistency loss in training</p></td>
+<td><p>10.0</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cp_mode</span></code></p></td>
+<td><p>Chambolle–Pock mode: <code class="docutils literal notranslate"><span class="pre">'fixed'</span></code> or <code class="docutils literal notranslate"><span class="pre">'accelerated'</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'fixed'</span></code></p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cp_iters</span></code></p></td>
+<td><p>Number of iterations for CP projection solver</p></td>
+<td><p>500</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cp_tol</span></code></p></td>
+<td><p>Tolerance for convergence of CP solver</p></td>
+<td><p>1e-9</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">safety</span></code></p></td>
+<td><p>Safety factor for projection stability</p></td>
+<td><p>0.95</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">knorm_iters</span></code></p></td>
+<td><p>Iterations for estimating operator norm (K-norm)</p></td>
+<td><p>25</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">knorm_seed</span></code></p></td>
+<td><p>Seed for K-norm estimation</p></td>
+<td><p>42</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">adjoint_iters</span></code></p></td>
+<td><p>Iterations for implicit differentiation (adjoint solve)</p></td>
+<td><p>25</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">k_layer</span></code></p></td>
+<td><p>Number of projection layers applied</p></td>
+<td><p>1</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">use_ruiz</span></code></p></td>
+<td><p>Whether to apply Ruiz equilibration</p></td>
+<td><p>True</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ruiz_iters</span></code></p></td>
+<td><p>Number of Ruiz scaling iterations</p></td>
+<td><p>10</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dtype</span></code></p></td>
+<td><p>Numerical precision (<code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'float64'</span></code></p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">print_every</span></code></p></td>
+<td><p>Frequency of printing training logs</p></td>
+<td><p>50</p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">device</span></code></p></td>
+<td><p>Device to run on (<code class="docutils literal notranslate"><span class="pre">cpu</span></code>, <code class="docutils literal notranslate"><span class="pre">gpu</span></code>, or <code class="docutils literal notranslate"><span class="pre">auto</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'auto'</span></code></p></td>
+<td><p>No</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code></p></td>
+<td><p>Whether to print detailed logs</p></td>
+<td><p>True</p></td>
+<td><p>No</p></td>
+</tr>
+</tbody>
+</table>
+<p>NLPOpt-Net takes a dictionary input for configurations. Following is an example of defining the configuration options and creating a model object.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">nlpoptnet</span><span class="w"> </span><span class="kn">import</span> <span class="n">NLPOptNet</span>
+
+<span class="n">CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+    <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="s1">&#39;train_frac&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="s1">&#39;hidden_size&#39;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="s1">&#39;hidden_layers&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;alpha_consistency&#39;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="s1">&#39;cp_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;cp_iters&#39;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s1">&#39;cp_tol&#39;</span><span class="p">:</span> <span class="mf">1e-09</span><span class="p">,</span>
+    <span class="s1">&#39;safety&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+    <span class="s1">&#39;knorm_iters&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+    <span class="s1">&#39;knorm_seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;adjoint_iters&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="s1">&#39;k_layer&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s1">&#39;use_ruiz&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;ruiz_iters&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;float64&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;print_every&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s1">&#39;device&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">NLPOptNet</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">CONFIG</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;qp&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Example_QP_Model&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here, the <code class="docutils literal notranslate"><span class="pre">CONFIG</span></code> dictionary defines the configuration of the model.
+Users must provide all required configuration options. For optional
+parameters, if not specified, default values will be used.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">type</span></code> argument is used for reference and bookkeeping purposes
+only and does not affect any computational procedure. Users may set
+it to <code class="docutils literal notranslate"><span class="pre">None</span></code>; however, it is recommended to specify the problem type
+for better experiment tracking and reproducibility. The allowed values
+are <code class="docutils literal notranslate"><span class="pre">qp</span></code>, <code class="docutils literal notranslate"><span class="pre">qcqp</span></code>, <code class="docutils literal notranslate"><span class="pre">nlp</span></code>, <code class="docutils literal notranslate"><span class="pre">nonconvex</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">name</span></code> argument is used to assign a custom name to the model,
+which is also used for naming the output directory where results
+are saved. The naming behavior is as follows:</p>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">name</span></code> is provided → output directory uses <code class="docutils literal notranslate"><span class="pre">name</span></code></p></li>
+<li><p>Else if <code class="docutils literal notranslate"><span class="pre">type</span></code> is provided → output directory uses <code class="docutils literal notranslate"><span class="pre">type</span></code></p></li>
+<li><p>Else → output directory defaults to <code class="docutils literal notranslate"><span class="pre">nlpoptnet</span></code></p></li>
+</ul>
+<p>The output directory is named using the pattern:</p>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;model_name&gt;_&lt;date&gt;_&lt;time&gt;</span></code></p>
+<p>where:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">model_name</span></code> is determined by the <code class="docutils literal notranslate"><span class="pre">name</span></code> or <code class="docutils literal notranslate"><span class="pre">type</span></code> argument</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">date</span></code> and <code class="docutils literal notranslate"><span class="pre">time</span></code> are automatically generated timestamps</p></li>
+</ul>
+<p>For example:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Example_QP_Model_20260423_104512</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">qp_20260423_104512</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nlpoptnet_20260423_104512</span></code></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="defining-the-problem.html" class="btn btn-neutral float-right" title="Defining the Problem" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -8,13 +8,14 @@ version = "0.2.0"
 description = "A JAX-based package for projected learning of parametric optimization problems"
 readme = "README.md"
 requires-python = ">=3.9"
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [
     {name = "Bimol Nath Roy", email = "bimolnathroy@tamu.edu"},
     {name = "Rahul Golder", email = "rahulgolder8420@tamu.edu"},
     {name = "MM Faruque Hasan", email = "hasan@tamu.edu"}
 ]
+keywords = ["jax", "optimization", "parametric optimization", "projection", "machine learning"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -23,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+urls = {Homepage = "https://github.com/SOULS-TAMU/nlpoptnet", Repository = "https://github.com/SOULS-TAMU/nlpoptnet"}
 dependencies = [
     "jax==0.4.30; python_version < '3.13'",
     "jaxlib==0.4.30; python_version < '3.13'",
@@ -35,6 +37,13 @@ dependencies = [
     "flax==0.8.5",
     "optax==0.2.4",
     "chex==0.1.90",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+cuda12 = [
+    "jax[cuda12]==0.4.30; python_version < '3.13'",
+    "jax[cuda12]==0.4.35; python_version >= '3.13'",
 ]
 
 [tool.setuptools]

@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nlpoptnet.sampling &mdash; NLPOptNet Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            NLPOptNet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/index.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package/index.html">Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/core/index.html">Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../citations.html">Citations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">NLPOptNet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">nlpoptnet.sampling</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for nlpoptnet.sampling</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Sampling, CSV I/O, and dataset-splitting helpers for NLPOptNet.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">linprog</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_can_parse_float_row</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether every cell in the row can be parsed as a float.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<div class="viewcode-block" id="load_csv_matrix">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.load_csv_matrix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_csv_matrix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">expected_columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a numeric CSV matrix, optionally reordering columns by header name.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CSV file not found: </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">fh</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> is empty.&quot;</span><span class="p">)</span>
+
+    <span class="n">first</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected_columns</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">expected</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;expected_columns must be non-empty.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">first</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span> <span class="ow">and</span> <span class="n">_can_parse_float_row</span><span class="p">(</span><span class="n">first</span><span class="p">):</span>
+        <span class="n">data_rows</span> <span class="o">=</span> <span class="n">rows</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">first</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">expected_columns</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">header</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> is missing columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="p">[</span><span class="n">header</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">expected_columns</span><span class="p">]</span>
+        <span class="n">data_rows</span> <span class="o">=</span> <span class="p">[[</span><span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">data_rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> has no data rows.&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([[</span><span class="nb">float</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data_rows</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> contains non-numeric data.&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> must have exactly </span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2"> columns.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+
+<div class="viewcode-block" id="write_csv_matrix">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.write_csv_matrix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_csv_matrix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">headers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a numeric matrix to CSV with optional column headers.&quot;&quot;&quot;</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">target</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">headers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">headers</span><span class="p">))</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="split_train_val">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.split_train_val">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_train_val</span><span class="p">(</span><span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">train_frac</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split samples into train and validation index arrays.&quot;&quot;&quot;</span>
+    <span class="n">X_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">X_np</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;X must be a 2D array.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">X_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need at least two parameter samples.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">train_frac</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;train_frac must satisfy 0 &lt; train_frac &lt; 1.&quot;</span><span class="p">)</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">))</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">X_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">rng</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+    <span class="n">n_train</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">train_frac</span><span class="p">)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">))),</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">train_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">indices</span><span class="p">[:</span><span class="n">n_train</span><span class="p">])</span>
+    <span class="n">val_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">indices</span><span class="p">[</span><span class="n">n_train</span><span class="p">:])</span>
+    <span class="k">return</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">val_idx</span></div>
+
+
+
+<div class="viewcode-block" id="sample_box">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.sample_box">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_box</span><span class="p">(</span><span class="n">lower</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">upper</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample uniformly from an axis-aligned box.&quot;&quot;&quot;</span>
+    <span class="n">low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">upper</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">low</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">high</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;lower and upper must have the same shape.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">low</span> <span class="o">&gt;</span> <span class="n">high</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each lower bound must be &lt;= the matching upper bound.&quot;</span><span class="p">)</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">low</span><span class="o">.</span><span class="n">size</span><span class="p">)))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="find_feasible_point">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.find_feasible_point">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_feasible_point</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find a feasible point for the halfspace system ``A x &lt;= b``.&quot;&quot;&quot;</span>
+    <span class="n">A_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">b_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">A_np</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A must be a 2D array.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">A_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A and b shape mismatch.&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">linprog</span><span class="p">(</span>
+        <span class="n">c</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">A_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="n">A_ub</span><span class="o">=</span><span class="n">A_np</span><span class="p">,</span>
+        <span class="n">b_ub</span><span class="o">=</span><span class="n">b_np</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="p">[(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)]</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">A_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;highs&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find a feasible point for the simplex/polytope constraints.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="hit_and_run_samples">
+<a class="viewcode-back" href="../../api/core/nlpoptnet/sampling.html#nlpoptnet.sampling.hit_and_run_samples">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">hit_and_run_samples</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">burn_in</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">thinning</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample approximately uniformly from a polytope via hit-and-run.&quot;&quot;&quot;</span>
+    <span class="n">A_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">b_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">A_np</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">A_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">b_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A and b must define a valid halfspace system Ax &lt;= b.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;num_samples must be positive.&quot;</span><span class="p">)</span>
+
+    <span class="n">dim</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">A_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">find_feasible_point</span><span class="p">(</span><span class="n">A_np</span><span class="p">,</span> <span class="n">b_np</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">A_np</span> <span class="o">@</span> <span class="n">x</span> <span class="o">-</span> <span class="n">b_np</span> <span class="o">&gt;</span> <span class="mf">1e-8</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The provided start point is not feasible.&quot;</span><span class="p">)</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">))</span>
+    <span class="n">burn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">burn_in</span><span class="p">)</span> <span class="k">if</span> <span class="n">burn_in</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">dim</span><span class="p">)</span>
+    <span class="n">thin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">thinning</span><span class="p">)</span> <span class="k">if</span> <span class="n">thinning</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">),</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">total_steps</span> <span class="o">=</span> <span class="n">burn</span> <span class="o">+</span> <span class="n">thin</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">)</span>
+    <span class="n">saved</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">total_steps</span><span class="p">):</span>
+        <span class="n">found_interval</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">direction</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">lower</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">upper</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">_attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+            <span class="n">direction_candidate</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">dim</span><span class="p">,))</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">direction_candidate</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">norm</span> <span class="o">&lt;=</span> <span class="mf">1e-12</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">direction_candidate</span> <span class="o">=</span> <span class="n">direction_candidate</span> <span class="o">/</span> <span class="n">norm</span>
+
+            <span class="n">lower_candidate</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            <span class="n">upper_candidate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="n">rhs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">A_np</span><span class="p">,</span> <span class="n">b_np</span><span class="p">):</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span> <span class="o">@</span> <span class="n">direction_candidate</span><span class="p">)</span>
+                <span class="n">margin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rhs</span> <span class="o">-</span> <span class="n">row</span> <span class="o">@</span> <span class="n">x</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">denom</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-12</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">margin</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">1e-10</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Current point left the feasible region during hit-and-run sampling.&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">candidate</span> <span class="o">=</span> <span class="n">margin</span> <span class="o">/</span> <span class="n">denom</span>
+                <span class="k">if</span> <span class="n">denom</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">upper_candidate</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">upper_candidate</span><span class="p">,</span> <span class="n">candidate</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lower_candidate</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lower_candidate</span><span class="p">,</span> <span class="n">candidate</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">lower_candidate</span> <span class="o">&gt;</span> <span class="n">upper_candidate</span> <span class="ow">and</span> <span class="n">lower_candidate</span> <span class="o">&lt;=</span> <span class="n">upper_candidate</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">:</span>
+                <span class="n">midpoint</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">lower_candidate</span> <span class="o">+</span> <span class="n">upper_candidate</span><span class="p">)</span>
+                <span class="n">lower_candidate</span> <span class="o">=</span> <span class="n">midpoint</span>
+                <span class="n">upper_candidate</span> <span class="o">=</span> <span class="n">midpoint</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lower_candidate</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">upper_candidate</span><span class="p">)</span> <span class="ow">and</span> <span class="n">lower_candidate</span> <span class="o">&lt;=</span> <span class="n">upper_candidate</span><span class="p">:</span>
+                <span class="n">direction</span> <span class="o">=</span> <span class="n">direction_candidate</span>
+                <span class="n">lower</span> <span class="o">=</span> <span class="n">lower_candidate</span>
+                <span class="n">upper</span> <span class="o">=</span> <span class="n">upper_candidate</span>
+                <span class="n">found_interval</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">found_interval</span> <span class="ow">or</span> <span class="n">direction</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">lower</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">upper</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The simplex/polytope appears unbounded or numerically unstable for uniform sampling.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">upper</span><span class="p">)</span> <span class="o">-</span> <span class="nb">float</span><span class="p">(</span><span class="n">lower</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="n">step_size</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">lower</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lo</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lower</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">upper</span><span class="p">))</span>
+            <span class="n">hi</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">lower</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">upper</span><span class="p">))</span>
+            <span class="n">step_size</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">direction</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;=</span> <span class="n">burn</span> <span class="ow">and</span> <span class="p">(</span><span class="n">step</span> <span class="o">-</span> <span class="n">burn</span><span class="p">)</span> <span class="o">%</span> <span class="n">thin</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">saved</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+            <span class="n">saved</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">saved</span> <span class="o">&gt;=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">):</span>
+                <span class="k">break</span>
+
+    <span class="k">if</span> <span class="n">saved</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_samples</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Hit-and-run sampling terminated before collecting all requested samples.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, NLPOptNet Authors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

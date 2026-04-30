@@ -1,3 +1,5 @@
+"""Serialization helpers for rebuilding symbolic NLPOptNet problems."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -12,6 +14,7 @@ jax.config.update("jax_enable_x64", True)
 
 
 def parse_constraint_text(text: str) -> tuple[str, str]:
+    """Convert serialized constraint text into residual form and constraint kind."""
     payload = str(text).strip()
     if "==" in payload:
         left, right = payload.split("==", 1)
@@ -26,6 +29,7 @@ def parse_constraint_text(text: str) -> tuple[str, str]:
 
 
 def _safe_env(constants: dict[str, Any]):
+    """Build the restricted expression environment used during reload."""
     def lin(A, z):
         return jnp.asarray(A) @ jnp.asarray(z)
 
@@ -78,6 +82,7 @@ def make_scalar_eval_fn(
     variable_names: list[str],
     constants: dict[str, Any],
 ) -> Callable:
+    """Build a scalar evaluator from serialized expression text."""
     base_env = _safe_env(constants)
 
     def fn(y, x):
@@ -101,6 +106,7 @@ def build_model_from_problem_spec(
     constants: dict[str, Any],
     dtype=jnp.float64,
 ):
+    """Rebuild a serializable jaxmodel problem from saved metadata."""
     parameter_names = list(problem_spec["parameter_names"])
     variable_names = list(problem_spec["variable_names"])
     objective_text = str(problem_spec["objective_text"])

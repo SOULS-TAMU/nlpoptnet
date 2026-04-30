@@ -1,3 +1,5 @@
+"""Helpers for assembling structured affine and nonlinear residual blocks."""
+
 from typing import Optional, Sequence, Tuple, Callable
 import jax.numpy as jnp
 from .variables import VariableSpec
@@ -8,6 +10,7 @@ def _build_affine_jacobian_matrix(
     var_spec: VariableSpec,
     y_blocks: Sequence[Tuple[jnp.ndarray, str]],
 ) -> jnp.ndarray:
+    """Assemble a dense Jacobian from named affine variable blocks."""
     n = var_spec.total_size
     if len(y_blocks) == 0:
         return jnp.zeros((0, n), dtype=jnp.float64)
@@ -29,6 +32,7 @@ def affine_eq_from_parts(
     x_blocks: Optional[Sequence[Tuple[jnp.ndarray, str]]] = None,
     name: str = "affine_eq",
 ):
+    """Build an affine equality block from named variable and parameter pieces."""
     rhs_const = 0.0 if rhs_const is None else rhs_const
     x_blocks = [] if x_blocks is None else list(x_blocks)
 
@@ -68,6 +72,7 @@ def affine_ineq_from_parts(
     x_blocks: Optional[Sequence[Tuple[jnp.ndarray, str]]] = None,
     name: str = "affine_ineq",
 ):
+    """Build an affine inequality block from named variable and parameter pieces."""
     rhs_const = 0.0 if rhs_const is None else rhs_const
     x_blocks = [] if x_blocks is None else list(x_blocks)
 
@@ -109,6 +114,7 @@ def nonlinear_eq_from_parts(
     x_direct_name: Optional[str] = None,
     name: str = "nonlinear_eq",
 ):
+    """Build a nonlinear equality block from linear and transformed terms."""
     linear_y_terms = [] if linear_y_terms is None else list(linear_y_terms)
     nonlinear_y_terms = [] if nonlinear_y_terms is None else list(nonlinear_y_terms)
     x_blocks = [] if x_blocks is None else list(x_blocks)
@@ -142,6 +148,7 @@ def nonlinear_ineq_from_parts(
     x_blocks: Optional[Sequence[Tuple[jnp.ndarray, str]]] = None,
     name: str = "nonlinear_ineq",
 ):
+    """Build a nonlinear inequality block from linear and transformed terms."""
     linear_y_terms = [] if linear_y_terms is None else list(linear_y_terms)
     nonlinear_y_terms = [] if nonlinear_y_terms is None else list(nonlinear_y_terms)
     x_blocks = [] if x_blocks is None else list(x_blocks)

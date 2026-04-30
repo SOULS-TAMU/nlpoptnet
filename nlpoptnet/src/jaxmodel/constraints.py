@@ -1,3 +1,5 @@
+"""Constraint wrappers and Jacobian builders for JAX optimization models."""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Union
@@ -8,6 +10,7 @@ from .types import ParamsDict, VarsDict, VectorModelFun
 
 
 def _as_1d(z: jnp.ndarray) -> jnp.ndarray:
+    """Normalize scalar or vector outputs into a one-dimensional array."""
     z = jnp.asarray(z)
     if z.ndim == 0:
         return z[None]
@@ -17,6 +20,7 @@ def _as_1d(z: jnp.ndarray) -> jnp.ndarray:
 
 
 def wrap_vector_constraint(var_spec: VariableSpec, fun: VectorModelFun):
+    """Wrap a constraint on named variables into a flat-vector residual."""
     def wrapped(params: ParamsDict, y_flat: jnp.ndarray) -> jnp.ndarray:
         vars_dict = var_spec.unpack(y_flat)
         return _as_1d(fun(params, vars_dict))
@@ -25,6 +29,42 @@ def wrap_vector_constraint(var_spec: VariableSpec, fun: VectorModelFun):
 
 @dataclass
 class ConstraintEntry:
+    r"""Container for one residual block in the optimization model.
+
+    Each constraint entry represents either an equality residual
+
+    .. math::
+
+        h(y, x) = 0
+
+    or an inequality residual
+
+    .. math::
+
+        g(y, x) \le 0
+
+    written in residual form with respect to the packed variable vector
+    :math:`y` and parameter vector :math:`x`.
+
+    The ``fun`` callable returns the residual block, while ``jac_y_fun`` stores
+    an optional Jacobian with respect to :math:`y`.
+
+    Attributes
+    ----------
+    name:
+        Human-readable identifier for the residual block.
+    kind:
+        Either ``"eq"`` or ``"ineq"``.
+    fun:
+        Callable returning the residual vector.
+    structure:
+        Structural label such as ``affine``, ``quadratic``, or ``nonlinear``.
+    jac_y_fun:
+        Optional callable for the Jacobian with respect to variables.
+    metadata:
+        Optional structured metadata describing how the block was assembled.
+    """
+
     name: str
     kind: str   # "eq" or "ineq"
     fun: callable
@@ -34,6 +74,7 @@ class ConstraintEntry:
 
 
 def _validate_quadratic_shapes(var_spec: VariableSpec, Q: jnp.ndarray, c: jnp.ndarray):
+    """Validate the dimensions of quadratic-constraint data."""
     n = var_spec.total_size
     Q = jnp.asarray(Q)
     c = jnp.asarray(c)
@@ -52,6 +93,7 @@ def eq_scalar(
     jac_y_fun: Optional[callable] = None,
     metadata: Optional[dict[str, Any]] = None,
 ) -> ConstraintEntry:
+    """Create a scalar equality constraint entry."""
     wrapped = wrap_vector_constraint(var_spec, lambda p, v: jnp.array([fun(p, v)]))
     return ConstraintEntry(
         name=name,
@@ -71,6 +113,7 @@ def ineq_scalar(
     jac_y_fun: Optional[callable] = None,
     metadata: Optional[dict[str, Any]] = None,
 ) -> ConstraintEntry:
+    """Create a scalar inequality constraint entry."""
     wrapped = wrap_vector_constraint(var_spec, lambda p, v: jnp.array([fun(p, v)]))
     return ConstraintEntry(
         name=name,
@@ -90,6 +133,7 @@ def eq_block(
     jac_y_fun: Optional[callable] = None,
     metadata: Optional[dict[str, Any]] = None,
 ) -> ConstraintEntry:
+    """Create a vector-valued equality constraint block."""
     wrapped = wrap_vector_constraint(var_spec, fun)
     return ConstraintEntry(
         name=name,
@@ -109,6 +153,7 @@ def ineq_block(
     jac_y_fun: Optional[callable] = None,
     metadata: Optional[dict[str, Any]] = None,
 ) -> ConstraintEntry:
+    """Create a vector-valued inequality constraint block."""
     wrapped = wrap_vector_constraint(var_spec, fun)
     return ConstraintEntry(
         name=name,
@@ -129,6 +174,7 @@ def quadratic_eq_scalar(
     x_name: Optional[str] = None,
     name: str = "quadratic_eq",
 ) -> ConstraintEntry:
+    """Create a scalar quadratic equality constraint."""
     Q, c = _validate_quadratic_shapes(var_spec, Q, c)
     Qsym = 0.5 * (Q + Q.T)
     rhs_const = jnp.asarray(rhs_const)
@@ -172,6 +218,7 @@ def quadratic_ineq_scalar(
     x_name: Optional[str] = None,
     name: str = "quadratic_ineq",
 ) -> ConstraintEntry:
+    """Create a scalar quadratic inequality constraint."""
     Q, c = _validate_quadratic_shapes(var_spec, Q, c)
     Qsym = 0.5 * (Q + Q.T)
     rhs_const = jnp.asarray(rhs_const)
@@ -207,6 +254,7 @@ def quadratic_ineq_scalar(
 
 
 def aggregate_constraints(entries: Sequence[ConstraintEntry], dtype=jnp.float64):
+    """Concatenate multiple residual blocks into one vector-valued function."""
     def agg(params: ParamsDict, y_flat: jnp.ndarray) -> jnp.ndarray:
         if len(entries) == 0:
             return jnp.zeros((0,), dtype=dtype)
@@ -220,6 +268,7 @@ def aggregate_constraint_jacobian(
     n_vars: int,
     dtype=jnp.float64,
 ):
+    """Aggregate per-constraint Jacobians into one dense Jacobian matrix."""
     jac_parts = []
     for entry in entries:
         if entry.jac_y_fun is not None:
