@@ -25,17 +25,8 @@ pip install "nlpoptnet[cuda12]"
 
 ## Quick Overview
 
-To give a quick understanding of what we are doing, we are trying to predict a solution ($y$) of the parameterized optimization problem,
-$$
-\begin{aligned}
-\quad
-\min \quad & f(x,y) \\
-\text{s.t.} \quad & h(x,y) = 0, \\
-& g(x,y) \le 0, \\
-& l(x) \le y \le u(x),
-\end{aligned}
-$$
-
+To give a quick understanding of what we are doing, we are trying to predict a solution ($y$) of the parameterized optimization problem
+min $f(x,y)$, s.t. $h(x,y)=0$, $g(x,y)\le0$, $l(x)\le y \le u(x)$
 for a given set of parameter ($x$). The core idea is to train a machine learning model in an unsupervised way and predict new solutions. For feasibility guarantee a projection layer is employed. Particularly, we approximate the original problem into a specific structure of quadratic program and solve that to retain feasibility. Graphically, the projection as training progresses would look like this:
 
 <figure align="center">
@@ -133,6 +124,9 @@ model.plot_history()
 ```
 
   <img src="docs/figures/example_history.png" width="100%">
+  
+## Reproducing Article Results
+Please redirect to [this](https://github.com/SOULS-TAMU/NLPOpt-Net-Experiments) repository for running the experiments given in the article.
 
 ## Reporting a Bug or Error
 
