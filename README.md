@@ -143,10 +143,13 @@ Your feedback is greatly appreciated and helps us improve the package.
 ## Citation
 
 ```text
-@article{bimol2026nlpoptnet,
-  title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees},
-  author={Nath Roy, Bimol and Golder, Rahul and Hasan, MM Faruque},
-  journal={https://arxiv.org/abs/2605.00260},
-  year={2026}
-  }
+@misc{roy2026nlpoptnetlearningmethodnonlinear,
+      title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees}, 
+      author={Bimol Nath Roy and Rahul Golder and MM Faruque Hasan},
+      year={2026},
+      eprint={2605.00260},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2605.00260}, 
+}
 ```
