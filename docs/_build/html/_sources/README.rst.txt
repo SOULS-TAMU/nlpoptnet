@@ -51,8 +51,7 @@ for a given set of parameter (:math:`x`). The core idea is to train a machine le
 
    Figure 2: Graphical interpretation of the projection.
 
-For a detailed idea, we refer readers to `this article <https://paperlink.com>`_. Complete user documentation can be found `here <https://putyourdocumentationlink.com>`_.
-
+For a detailed idea, we refer readers to `this article <https://arxiv.org/abs/2605.00260>`_.
 Core API
 ~~~~~~~~
 
@@ -152,22 +151,20 @@ Following is an example of the summary and history plot for a trained model.
    :align: center
    :width: 100%
 
-Reporting a Bug or Error
-------------------------
-
-We understand that running into issues can be frustrating. If you experience any errors while using NLPOpt-Net, please let us know so we can address them in future updates.
-
-When reporting a bug, it is helpful to include:
-
-- A brief description of the issue
-- Relevant code snippets
-- Error messages or logs
-- Steps to reproduce the problem
-
-Your feedback is greatly appreciated and helps us improve the package.
-
-
 Citation
 --------
 
 If you use this package in your work, please cite us using the :doc:`citations` page.
+
+.. admonition:: Reporting a Bug or Error
+
+   We understand that running into issues can be frustrating. If you experience any errors while using NLPOpt-Net, please let us know so we can address them in future updates.
+
+   When reporting a bug, it is helpful to include:
+
+   - A brief description of the issue
+   - Relevant code snippets
+   - Error messages or logs
+   - Steps to reproduce the problem
+
+   Your feedback is greatly appreciated and helps us improve the package.

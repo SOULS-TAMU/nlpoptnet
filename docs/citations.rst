@@ -5,9 +5,12 @@ If you use this package for benchmarking or research purposes please cite:
 
 .. code-block:: bibtex
 
-    @article{nathroy2026bimol,
-    title   = {NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees},
-    author  = {Nath Roy, Bimol and Golder, Rahul and Hasan, MM Faruque},
-    journal = {arXiv preprint arXiv:XXXX.XXXXX},
-    year    = {2026}
+    @misc{bimol2026nlpoptnet,
+        title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees}, 
+        author={Bimol Nath Roy and Rahul Golder and MM Faruque Hasan},
+        year={2026},
+        eprint={2605.00260},
+        archivePrefix={arXiv},
+        primaryClass={cs.LG},
+        url={https://arxiv.org/abs/2605.00260}, 
     }

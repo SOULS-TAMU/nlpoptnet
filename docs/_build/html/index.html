@@ -122,9 +122,9 @@
 <p><span class="caption-text">Figure 2: Graphical interpretation of the projection.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
 </figcaption>
 </figure>
-<p>For a detailed idea, we refer readers to <a class="reference external" href="https://paperlink.com">this article</a>. Complete user documentation can be found <a class="reference external" href="https://putyourdocumentationlink.com">here</a>.</p>
-<section id="core-api">
-<h3>Core API<a class="headerlink" href="#core-api" title="Link to this heading"></a></h3>
+<p>For a detailed idea, we refer readers to <a class="reference external" href="https://arxiv.org/abs/2605.00260">this article</a>.
+Core API
+~~~~~~~~</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">NLPOptNet(config=...,</span> <span class="pre">type=...)</span></code> is the user-facing entry point.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">model.extract(problem.npz)</span></code> loads structured matrices and exposes them as
@@ -138,7 +138,6 @@ bound constraints stay on the dedicated projection path.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">model.load(metadata_path)</span></code> restores a trained model, and
 <code class="docutils literal notranslate"><span class="pre">model.predict(x_value)</span></code> returns projected variable predictions.</p></li>
 </ul>
-</section>
 </section>
 <section id="general-workflow">
 <h2>General Workflow<a class="headerlink" href="#general-workflow" title="Link to this heading"></a></h2>
@@ -213,8 +212,11 @@ Est. JAX Batch Inference Time     : 140.02 ms
 <a class="reference internal image-reference" href="_images/example_history.png"><img alt="_images/example_history.png" class="align-center" src="_images/example_history.png" style="width: 100%;" />
 </a>
 </section>
-<section id="reporting-a-bug-or-error">
-<h2>Reporting a Bug or Error<a class="headerlink" href="#reporting-a-bug-or-error" title="Link to this heading"></a></h2>
+<section id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Link to this heading"></a></h2>
+<p>If you use this package in your work, please cite us using the <a class="reference internal" href="citations.html"><span class="doc">Citations</span></a> page.</p>
+<div class="admonition-reporting-a-bug-or-error admonition">
+<p class="admonition-title">Reporting a Bug or Error</p>
 <p>We understand that running into issues can be frustrating. If you experience any errors while using NLPOpt-Net, please let us know so we can address them in future updates.</p>
 <p>When reporting a bug, it is helpful to include:</p>
 <ul class="simple">
@@ -224,10 +226,7 @@ Est. JAX Batch Inference Time     : 140.02 ms
 <li><p>Steps to reproduce the problem</p></li>
 </ul>
 <p>Your feedback is greatly appreciated and helps us improve the package.</p>
-</section>
-<section id="citation">
-<h2>Citation<a class="headerlink" href="#citation" title="Link to this heading"></a></h2>
-<p>If you use this package in your work, please cite us using the <a class="reference internal" href="citations.html"><span class="doc">Citations</span></a> page.</p>
+</div>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
