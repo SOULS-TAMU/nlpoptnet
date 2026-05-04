@@ -34,7 +34,7 @@ for a given set of parameter ($x$). The core idea is to train a machine learning
   <figcaption>Figure 2: Graphical interpretation of the projection.</figcaption>
 </figure>
 
-For a detailed idea, we refer readers to [this article](https://paperlink.com). Complete user documentation can be found [here](https://putyourdocumentationlink.com).
+For a detailed idea, we refer readers to [this article](https://arxiv.org/abs/2605.00260). Complete user documentation can be found [here](https://putyourdocumentationlink.com).
 
 ### Core API
 
