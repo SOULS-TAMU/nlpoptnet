@@ -143,7 +143,7 @@ Your feedback is greatly appreciated and helps us improve the package.
 ## Citation
 
 ```text
-@misc{roy2026nlpoptnetlearningmethodnonlinear,
+@misc{bimol2026nlpoptnet,
       title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees}, 
       author={Bimol Nath Roy and Rahul Golder and MM Faruque Hasan},
       year={2026},
