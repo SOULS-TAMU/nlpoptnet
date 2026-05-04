@@ -140,13 +140,13 @@ When reporting a bug, it is helpful to include:
 
 Your feedback is greatly appreciated and helps us improve the package.
 
-<!-- ## Citation
+## Citation
 
 ```text
 @article{bimol2026nlpoptnet,
   title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees},
   author={Nath Roy, Bimol and Golder, Rahul and Hasan, MM Faruque},
-  journal={ },
+  journal={https://arxiv.org/abs/2605.00260},
   year={2026}
   }
-``` -->
+```
