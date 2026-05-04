@@ -1421,8 +1421,8 @@ class NLPOptNet:
         msg = (
         "\n" + "="*120 + "\n"
         "If you use this model in your research, please cite:\n"
-        "Nath Roy, Golder, & Hasan (2026) NLPOpt-Net: Nonlinear Parametric Optimization Network with Feasibility Guarantees.\n"
-        "https://github.com/SOULS-TAMU/NLPOpt-Net\n"
+        "Nath Roy, Golder, & Hasan (2026) NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees.\n"
+        "https://github.com/SOULS-TAMU/nlpoptnet\n"
         "Contact: bimolnathroy@tamu.edu, rahulgolder8420@tamu.edu, hasan@tamu.edu\n"
         + "="*120 + "\n"
         )
