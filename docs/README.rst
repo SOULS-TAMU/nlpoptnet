@@ -160,6 +160,8 @@ If you use this package in your work, please cite us using the :doc:`citations` 
 
    We understand that running into issues can be frustrating. If you experience any errors while using NLPOpt-Net, please let us know so we can address them in future updates.
 
+   Contact Mail: hasan@tamu.edu
+
    When reporting a bug, it is helpful to include:
 
    - A brief description of the issue
