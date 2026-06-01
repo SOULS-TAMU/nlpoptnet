@@ -17,7 +17,6 @@
       <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -55,11 +54,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#common-keys">Common keys</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#projection-and-optimization-keys">Projection and optimization keys</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#sampling-and-bounds">Sampling and bounds</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#core-code-reference">Core code reference</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#opt.training.config.TrainConfig"><code class="docutils literal notranslate"><span class="pre">TrainConfig</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#opt.training.config.cfg_from_dict"><code class="docutils literal notranslate"><span class="pre">cfg_from_dict()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#core-code-reference">Core code reference</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="entities.html">Entities</a></li>
@@ -100,7 +95,7 @@
              
   <section id="hyperparameters">
 <h1>Hyperparameters<a class="headerlink" href="#hyperparameters" title="Link to this heading"></a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">NLPOptNet</span></code> accepts a configuration dictionary that is normalized into the training configuration described by <a class="reference internal" href="#opt.training.config.TrainConfig" title="opt.training.config.TrainConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">opt.training.config.TrainConfig</span></code></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">NLPOptNet</span></code> accepts a configuration dictionary that is normalized into the training configuration described by <code class="xref py py-class docutils literal notranslate"><span class="pre">opt.training.config.TrainConfig</span></code>.</p>
 <section id="required-keys">
 <h2>Required keys<a class="headerlink" href="#required-keys" title="Link to this heading"></a></h2>
 <ul class="simple">
@@ -209,128 +204,6 @@
 </section>
 <section id="core-code-reference">
 <h2>Core code reference<a class="headerlink" href="#core-code-reference" title="Link to this heading"></a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">opt.training.config.</span></span><span class="sig-name descname"><span class="pre">TrainConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_consistency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_frac</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_frac</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cp_iters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cp_tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cp_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'fixed'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IS_FIXED</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stepsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safety</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">knorm_iters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">knorm_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint_iters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_ruiz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ruiz_iters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float64'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jit_warmup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/opt/training/config.html#TrainConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.training.config.TrainConfig" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Typed training and projection hyperparameters.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.batch_size">
-<span class="sig-name descname"><span class="pre">batch_size</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.batch_size" title="Link to this definition"></a></dt>
-<dd><p>Mini-batch size used for train and validation updates.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.epochs">
-<span class="sig-name descname"><span class="pre">epochs</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.epochs" title="Link to this definition"></a></dt>
-<dd><p>Number of optimization epochs.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.learning_rate">
-<span class="sig-name descname"><span class="pre">learning_rate</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.learning_rate" title="Link to this definition"></a></dt>
-<dd><p>Adam learning rate for the neural backbone.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.alpha_consistency">
-<span class="sig-name descname"><span class="pre">alpha_consistency</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.alpha_consistency" title="Link to this definition"></a></dt>
-<dd><p>Weight applied to the projection-consistency penalty.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">train_frac,</span> <span class="pre">val_frac</span></span></dt>
-<dd><p>Fractions used when splitting parameter samples.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">hidden_size,</span> <span class="pre">hidden_dim</span></span></dt>
-<dd><p>Backbone width and number of hidden layers.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">cp_iters,</span> <span class="pre">cp_tol,</span> <span class="pre">cp_mode</span></span></dt>
-<dd><p>Projection-operator iteration budget, tolerance, and mode.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">safety,</span> <span class="pre">knorm_iters,</span> <span class="pre">knorm_seed</span></span></dt>
-<dd><p>Step-size and operator-norm estimation controls.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.adjoint_iters">
-<span class="sig-name descname"><span class="pre">adjoint_iters</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.adjoint_iters" title="Link to this definition"></a></dt>
-<dd><p>Iteration budget used in implicit differentiation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">use_ruiz,</span> <span class="pre">ruiz_iters</span></span></dt>
-<dd><p>Controls for Ruiz equilibration.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="opt.training.config.TrainConfig.k_layer">
-<span class="sig-name descname"><span class="pre">k_layer</span></span><a class="headerlink" href="#opt.training.config.TrainConfig.k_layer" title="Link to this definition"></a></dt>
-<dd><p>Number of projection layers to apply after the backbone.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">dtype,</span> <span class="pre">device,</span> <span class="pre">jit_warmup</span></span></dt>
-<dd><p>Numeric precision and execution settings.</p>
-</dd></dl>
-
-<p class="rubric">Notes</p>
-<p>The projection-oriented part of the training loop can be viewed as</p>
-<div class="math notranslate nohighlight">
-\[(\hat y, \hat \lambda, \hat \mu) = \Phi_\theta(x), \qquad
-(y^\star, \lambda^\star, \mu^\star) = \Pi(\hat y, \hat \lambda, \hat \mu; x),\]</div>
-<p>where <code class="docutils literal notranslate"><span class="pre">k_layer</span></code>, <code class="docutils literal notranslate"><span class="pre">cp_mode</span></code>, <code class="docutils literal notranslate"><span class="pre">cp_iters</span></code>, <code class="docutils literal notranslate"><span class="pre">cp_tol</span></code>, <code class="docutils literal notranslate"><span class="pre">safety</span></code>, and
-the Ruiz-scaling options control the projection operator <span class="math notranslate nohighlight">\(\Pi\)</span>.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.training.config.cfg_from_dict">
-<span class="sig-prename descclassname"><span class="pre">opt.training.config.</span></span><span class="sig-name descname"><span class="pre">cfg_from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#opt.training.config.TrainConfig" title="opt.training.config.TrainConfig"><span class="pre">TrainConfig</span></a></span></span><a class="reference internal" href="../../_modules/opt/training/config.html#cfg_from_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.training.config.cfg_from_dict" title="Link to this definition"></a></dt>
-<dd><p>Normalize a config dictionary into a validated <a class="reference internal" href="#opt.training.config.TrainConfig" title="opt.training.config.TrainConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrainConfig</span></code></a>.</p>
-</dd></dl>
-
 </section>
 </section>
 

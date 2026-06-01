@@ -26,3 +26,5 @@ prompt.txt
 TESTPYPI_PUBLISH_INSTRUCTIONS.md
 .codex
 Experiments_Article/
+
+notebooks/

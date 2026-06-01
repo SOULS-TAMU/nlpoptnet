@@ -57,12 +57,7 @@
 <li class="toctree-l3"><a class="reference internal" href="cp_jax_implicit.html">opt.CP_jax_implicit</a></li>
 <li class="toctree-l3"><a class="reference internal" href="aot_artifacts.html">opt.aot_artifacts</a></li>
 <li class="toctree-l3"><a class="reference internal" href="model_bridge.html">opt.model_bridge</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">opt.native_projection</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#opt.native_projection.NativeProjection"><code class="docutils literal notranslate"><span class="pre">NativeProjection</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#opt.native_projection.compile_native_projection"><code class="docutils literal notranslate"><span class="pre">compile_native_projection()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#opt.native_projection.load_or_compile_native_projection"><code class="docutils literal notranslate"><span class="pre">load_or_compile_native_projection()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">opt.native_projection</a></li>
 <li class="toctree-l3"><a class="reference internal" href="models_backbone.html">opt.models.backbone</a></li>
 <li class="toctree-l3"><a class="reference internal" href="projection_layer.html">opt.projection.layer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="training_config.html">opt.training.config</a></li>
@@ -104,35 +99,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-opt.native_projection">
-<span id="opt-native-projection"></span><h1>opt.native_projection<a class="headerlink" href="#module-opt.native_projection" title="Link to this heading"></a></h1>
-<p>Native sequential projection backend and compilation helpers.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="opt.native_projection.NativeProjection">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">opt.native_projection.</span></span><span class="sig-name descname"><span class="pre">NativeProjection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shared_library</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/opt/native_projection.html#NativeProjection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.native_projection.NativeProjection" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>ctypes wrapper around the compiled native CP projection library.</p>
-<p>Load a shared library that exposes <code class="docutils literal notranslate"><span class="pre">nlpoptnet_cp_solve</span></code>.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="opt.native_projection.NativeProjection.solve">
-<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Q_diag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">C</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lam0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/opt/native_projection.html#NativeProjection.solve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.native_projection.NativeProjection.solve" title="Link to this definition"></a></dt>
-<dd><p>Solve a batched projection problem with the native backend.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.native_projection.compile_native_projection">
-<span class="sig-prename descclassname"><span class="pre">opt.native_projection.</span></span><span class="sig-name descname"><span class="pre">compile_native_projection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/opt/native_projection.html#compile_native_projection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.native_projection.compile_native_projection" title="Link to this definition"></a></dt>
-<dd><p>Compile and store the native projection shared library in the run directory.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.native_projection.load_or_compile_native_projection">
-<span class="sig-prename descclassname"><span class="pre">opt.native_projection.</span></span><span class="sig-name descname"><span class="pre">load_or_compile_native_projection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#opt.native_projection.NativeProjection" title="opt.native_projection.NativeProjection"><span class="pre">NativeProjection</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/opt/native_projection.html#load_or_compile_native_projection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.native_projection.load_or_compile_native_projection" title="Link to this definition"></a></dt>
-<dd><p>Load a usable native projection library or try to compile one.</p>
-</dd></dl>
-
+  <section id="opt-native-projection">
+<h1>opt.native_projection<a class="headerlink" href="#opt-native-projection" title="Link to this heading"></a></h1>
 </section>
 
 

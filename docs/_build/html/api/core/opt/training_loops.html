@@ -62,12 +62,7 @@
 <li class="toctree-l3"><a class="reference internal" href="projection_layer.html">opt.projection.layer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="training_config.html">opt.training.config</a></li>
 <li class="toctree-l3"><a class="reference internal" href="training_pipeline.html">opt.training.jaxmodel_pipeline</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">opt.training.loops</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#opt.training.loops.build_epoch_fns"><code class="docutils literal notranslate"><span class="pre">build_epoch_fns()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#opt.training.loops.warmup_compile"><code class="docutils literal notranslate"><span class="pre">warmup_compile()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#opt.training.loops.make_fixed_batches"><code class="docutils literal notranslate"><span class="pre">make_fixed_batches()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">opt.training.loops</a></li>
 <li class="toctree-l3"><a class="reference internal" href="solvers.html">opt.solvers</a></li>
 <li class="toctree-l3"><a class="reference internal" href="subproblem.html">opt.subproblem</a></li>
 </ul>
@@ -104,27 +99,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-opt.training.loops">
-<span id="opt-training-loops"></span><h1>opt.training.loops<a class="headerlink" href="#module-opt.training.loops" title="Link to this heading"></a></h1>
-<p>Epoch loops, warmup, and batch-shaping helpers for training.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.training.loops.build_epoch_fns">
-<span class="sig-prename descclassname"><span class="pre">opt.training.loops.</span></span><span class="sig-name descname"><span class="pre">build_epoch_fns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_step</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/opt/training/loops.html#build_epoch_fns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.training.loops.build_epoch_fns" title="Link to this definition"></a></dt>
-<dd><p>Build per-epoch train and evaluation reducers over fixed batches.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.training.loops.warmup_compile">
-<span class="sig-prename descclassname"><span class="pre">opt.training.loops.</span></span><span class="sig-name descname"><span class="pre">warmup_compile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">cfg:</span> <span class="pre">~opt.training.config.TrainConfig,</span> <span class="pre">state:</span> <span class="pre">~opt.models.backbone.State,</span> <span class="pre">train_step_fn:</span> <span class="pre">~typing.Callable[[~opt.models.backbone.State,</span> <span class="pre">~jax.Array],</span> <span class="pre">~typing.Tuple[~opt.models.backbone.State,</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~jax.Array]]],</span> <span class="pre">eval_step_fn:</span> <span class="pre">~typing.Callable[[~typing.Any,</span> <span class="pre">~jax.Array],</span> <span class="pre">~typing.Dict[str,</span> <span class="pre">~jax.Array]],</span> <span class="pre">p:</span> <span class="pre">int,</span> <span class="pre">dtype=&lt;class</span> <span class="pre">'jax.numpy.float64'&gt;,</span> <span class="pre">device=None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/opt/training/loops.html#warmup_compile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.training.loops.warmup_compile" title="Link to this definition"></a></dt>
-<dd><p>Trigger one train and eval pass to populate JIT caches.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="opt.training.loops.make_fixed_batches">
-<span class="sig-prename descclassname"><span class="pre">opt.training.loops.</span></span><span class="sig-name descname"><span class="pre">make_fixed_batches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="reference internal" href="../../../_modules/opt/training/loops.html#make_fixed_batches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#opt.training.loops.make_fixed_batches" title="Link to this definition"></a></dt>
-<dd><p>Trim a dataset and reshape it into fixed-size batches.</p>
-</dd></dl>
-
+  <section id="opt-training-loops">
+<h1>opt.training.loops<a class="headerlink" href="#opt-training-loops" title="Link to this heading"></a></h1>
 </section>
 
 

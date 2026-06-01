@@ -54,12 +54,7 @@
 <li class="toctree-l3"><a class="reference internal" href="module_init.html">nlpoptnet package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api.html">nlpoptnet.api</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sampling.html">nlpoptnet.sampling</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.serialization</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.parse_constraint_text"><code class="docutils literal notranslate"><span class="pre">parse_constraint_text()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.make_scalar_eval_fn"><code class="docutils literal notranslate"><span class="pre">make_scalar_eval_fn()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.serialization.build_model_from_problem_spec"><code class="docutils literal notranslate"><span class="pre">build_model_from_problem_spec()</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.serialization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="utils.html">nlpoptnet.utils</a></li>
 </ul>
 </li>
@@ -96,27 +91,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-nlpoptnet.serialization">
-<span id="nlpoptnet-serialization"></span><h1>nlpoptnet.serialization<a class="headerlink" href="#module-nlpoptnet.serialization" title="Link to this heading"></a></h1>
-<p>Serialization helpers for rebuilding symbolic NLPOptNet problems.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="nlpoptnet.serialization.parse_constraint_text">
-<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">parse_constraint_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#parse_constraint_text"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.parse_constraint_text" title="Link to this definition"></a></dt>
-<dd><p>Convert serialized constraint text into residual form and constraint kind.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="nlpoptnet.serialization.make_scalar_eval_fn">
-<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">make_scalar_eval_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constants</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#make_scalar_eval_fn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.make_scalar_eval_fn" title="Link to this definition"></a></dt>
-<dd><p>Build a scalar evaluator from serialized expression text.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="nlpoptnet.serialization.build_model_from_problem_spec">
-<span class="sig-prename descclassname"><span class="pre">nlpoptnet.serialization.</span></span><span class="sig-name descname"><span class="pre">build_model_from_problem_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">problem_spec:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">*,</span> <span class="pre">constants:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">dtype=&lt;class</span> <span class="pre">'jax.numpy.float64'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/serialization.html#build_model_from_problem_spec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.serialization.build_model_from_problem_spec" title="Link to this definition"></a></dt>
-<dd><p>Rebuild a serializable jaxmodel problem from saved metadata.</p>
-</dd></dl>
-
+  <section id="nlpoptnet-serialization">
+<h1>nlpoptnet.serialization<a class="headerlink" href="#nlpoptnet-serialization" title="Link to this heading"></a></h1>
 </section>
 
 

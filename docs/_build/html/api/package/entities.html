@@ -53,12 +53,7 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Entities</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#parameters-and-variables">Parameters and variables</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#constants">Constants</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#autodoc">Autodoc</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.Expression"><code class="docutils literal notranslate"><span class="pre">Expression</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.VectorExpression"><code class="docutils literal notranslate"><span class="pre">VectorExpression</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#autodoc">Autodoc</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="objective.html">Objective</a></li>
@@ -102,8 +97,8 @@
 <section id="parameters-and-variables">
 <h2>Parameters and variables<a class="headerlink" href="#parameters-and-variables" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Parameters are registered with <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.add_parameter" title="nlpoptnet.api.NLPOptNet.add_parameter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.add_parameter()</span></code></a>.</p></li>
-<li><p>Variables are registered with <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.add_variable" title="nlpoptnet.api.NLPOptNet.add_variable"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.add_variable()</span></code></a>.</p></li>
+<li><p>Parameters are registered with <code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.add_parameter()</span></code>.</p></li>
+<li><p>Variables are registered with <code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.add_variable()</span></code>.</p></li>
 <li><p>Access is expression-based, for example <code class="docutils literal notranslate"><span class="pre">x.x1</span></code> or <code class="docutils literal notranslate"><span class="pre">y.y2</span></code>.</p></li>
 </ul>
 </section>
@@ -111,45 +106,14 @@
 <h2>Constants<a class="headerlink" href="#constants" title="Link to this heading"></a></h2>
 <p>Constants can be introduced manually with:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.matrix" title="nlpoptnet.api.NLPOptNet.matrix"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.matrix()</span></code></a></p></li>
-<li><p><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.vector" title="nlpoptnet.api.NLPOptNet.vector"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.vector()</span></code></a></p></li>
-<li><p><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.tensor" title="nlpoptnet.api.NLPOptNet.tensor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.tensor()</span></code></a></p></li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.matrix()</span></code></p></li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.vector()</span></code></p></li>
+<li><p><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.tensor()</span></code></p></li>
 </ul>
-<p>or loaded in bulk with <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet.extract" title="nlpoptnet.api.NLPOptNet.extract"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.extract()</span></code></a>.</p>
+<p>or loaded in bulk with <code class="xref py py-meth docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet.extract()</span></code>.</p>
 </section>
 <section id="autodoc">
 <h2>Autodoc<a class="headerlink" href="#autodoc" title="Link to this heading"></a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constant">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">Constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#Constant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.Constant" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Named constant array registered inside an <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">NLPOptNet</span></code></a> model.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="nlpoptnet.api.Expression">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">Expression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine_param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_AffineParamScalar</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#Expression"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.Expression" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Scalar symbolic expression tracked by <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">NLPOptNet</span></code></a>.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.Expression.eval">
-<span class="sig-name descname"><span class="pre">eval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#Expression.eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.Expression.eval" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="nlpoptnet.api.VectorExpression">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">VectorExpression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affine_param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">_AffineParamVector</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#VectorExpression"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.VectorExpression" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Vector-valued symbolic expression tracked by <a class="reference internal" href="object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">NLPOptNet</span></code></a>.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.VectorExpression.eval">
-<span class="sig-name descname"><span class="pre">eval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#VectorExpression.eval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.VectorExpression.eval" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
 </section>
 </section>
 

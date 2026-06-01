@@ -52,11 +52,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../jaxmodel/index.html">jaxmodel</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">nlpoptnet core</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="module_init.html">nlpoptnet package</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.api</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.Constraint"><code class="docutils literal notranslate"><span class="pre">Constraint</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.ProblemBuilder"><code class="docutils literal notranslate"><span class="pre">ProblemBuilder</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">nlpoptnet.api</a></li>
 <li class="toctree-l3"><a class="reference internal" href="sampling.html">nlpoptnet.sampling</a></li>
 <li class="toctree-l3"><a class="reference internal" href="serialization.html">nlpoptnet.serialization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="utils.html">nlpoptnet.utils</a></li>
@@ -95,51 +91,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-nlpoptnet.api">
-<span id="nlpoptnet-api"></span><h1>nlpoptnet.api<a class="headerlink" href="#module-nlpoptnet.api" title="Link to this heading"></a></h1>
-<p>High-level public API for defining, training, saving, and using NLPOptNet.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">Constraint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lhs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'Any'</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'Any'</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/api.html#Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.Constraint" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.lhs">
-<span class="sig-name descname"><span class="pre">lhs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#nlpoptnet.api.Constraint.lhs" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.rhs">
-<span class="sig-name descname"><span class="pre">rhs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><a class="headerlink" href="#nlpoptnet.api.Constraint.rhs" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.kind">
-<span class="sig-name descname"><span class="pre">kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#nlpoptnet.api.Constraint.kind" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.op">
-<span class="sig-name descname"><span class="pre">op</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#nlpoptnet.api.Constraint.op" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.text">
-<span class="sig-name descname"><span class="pre">text</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#nlpoptnet.api.Constraint.text" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.Constraint.residual">
-<span class="sig-name descname"><span class="pre">residual</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ctx</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/nlpoptnet/api.html#Constraint.residual"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.Constraint.residual" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="nlpoptnet.api.ProblemBuilder">
-<span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">ProblemBuilder</span></span><a class="headerlink" href="#nlpoptnet.api.ProblemBuilder" title="Link to this definition"></a></dt>
-<dd><p>alias of <a class="reference internal" href="../../package/object.html#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">NLPOptNet</span></code></a></p>
-</dd></dl>
-
+  <section id="nlpoptnet-api">
+<h1>nlpoptnet.api<a class="headerlink" href="#nlpoptnet-api" title="Link to this heading"></a></h1>
 </section>
 
 

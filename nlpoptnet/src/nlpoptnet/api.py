@@ -219,6 +219,7 @@ class _BuildState:
     train_config: dict[str, Any]
     dtype: Any
     X: np.ndarray
+    X_original: np.ndarray
     train_idx: np.ndarray
     val_idx: np.ndarray
     train_batches: Any
@@ -232,7 +233,34 @@ class _BuildState:
     violation_fn: Callable
     objective_fn: Callable
     sub_layer: Callable
+    lower_M: np.ndarray
+    lower_c: np.ndarray
+    upper_M: np.ndarray
+    upper_c: np.ndarray
 
+
+@dataclass
+class _ScalingState:
+    enabled: bool = False
+
+    D_p: np.ndarray | None = None
+    D_v: np.ndarray | None = None
+    D_obj: float = 1.0
+    D_eq: np.ndarray | None = None
+    D_ineq: np.ndarray | None = None
+
+    eps: float = 1e-12
+    objective_percentile: float = 95.0
+    constraint_percentile: float = 95.0
+    probe_points: int = 8
+    mode: str = "fast"
+    use_jacobian_scaling: bool = False
+
+    manual_D_p: np.ndarray | None = None
+    manual_D_v: np.ndarray | None = None
+    manual_D_obj: float | None = None
+    manual_D_eq: np.ndarray | None = None
+    manual_D_ineq: np.ndarray | None = None
 
 @dataclass
 class _InferenceState:
@@ -778,6 +806,7 @@ class NLPOptNet:
         self._inference_state: _InferenceState | None = None
         self._metadata_path: str | None = None
         self._extracted_problem_path: str | None = None
+        self.scaling = _ScalingState()
 
     def add_parameter(self, names: str | Iterable[str]):
         """Register one or more parameter symbols and return the namespace."""
@@ -927,6 +956,51 @@ class NLPOptNet:
         else:
             raise ValueError("parameter_region(type=...) must be one of data, simplex, or box.")
         return self
+    
+    def scale(
+        self,
+        *,
+        parameter=None,
+        variable=None,
+        objective: float | None = None,
+        equality=None,
+        inequality=None,
+        eps: float = 1e-12,
+        objective_percentile: float = 95.0,
+        constraint_percentile: float = 95.0,
+        probe_points: int = 8,
+        mode: str = "fast",
+        use_jacobian_scaling: bool = False,
+    ) -> "NLPOptNet":
+        """
+        Enable scaling.
+
+        Internal scaled variables:
+            x_original = D_p * x_scaled
+            y_original = D_v * y_scaled
+
+        Internal scaled model:
+            f_scaled = f_original / D_obj
+            h_scaled = h_original / D_eq
+            g_scaled = g_original / D_ineq
+        """
+        self.scaling.enabled = True
+        self.scaling.eps = float(eps)
+        self.scaling.objective_percentile = float(objective_percentile)
+        self.scaling.constraint_percentile = float(constraint_percentile)
+        self.scaling.probe_points = int(probe_points)
+        self.scaling.mode = str(mode).lower()
+        self.scaling.use_jacobian_scaling = bool(use_jacobian_scaling)
+
+        self.scaling.manual_D_p = None if parameter is None else np.asarray(parameter, dtype=np.float64).reshape(-1)
+        self.scaling.manual_D_v = None if variable is None else np.asarray(variable, dtype=np.float64).reshape(-1)
+        self.scaling.manual_D_obj = None if objective is None else float(objective)
+        self.scaling.manual_D_eq = None if equality is None else np.asarray(equality, dtype=np.float64).reshape(-1)
+        self.scaling.manual_D_ineq = None if inequality is None else np.asarray(inequality, dtype=np.float64).reshape(-1)
+
+        self._build_state = None
+        self._inference_state = None
+        return self
 
     def lin(self, matrix, expr):
         """Form an affine expression ``A @ expr``."""
@@ -1066,33 +1140,75 @@ class NLPOptNet:
         n_x = len(self.parameter_names)
         n_y = len(self.variable_names)
         dtype = resolve_dtype(str(self.config["dtype"]))
-        lower_M, lower_c, upper_M, upper_c = self._build_box_bounds(n_x=n_x, n_y=n_y)
+
+        # Bounds are first built in ORIGINAL coordinates:
+        #   lower_original(x_original) <= y_original <= upper_original(x_original)
+        lower_M_orig, lower_c_orig, upper_M_orig, upper_c_orig = self._build_box_bounds(n_x=n_x, n_y=n_y)
+
+        # Load/generate ORIGINAL parameter samples before building the JAX model.
+        X_original = self._load_or_sample_parameters(n_x=n_x)
+
+        # Compute D_p and D_v from original samples/bounds.
+        self._compute_basic_scales(
+            X_original=X_original,
+            lower_M=lower_M_orig,
+            lower_c=lower_c_orig,
+            upper_M=upper_M_orig,
+            upper_c=upper_c_orig,
+        )
+
+        X = self._scaled_parameters(X_original)
+
+        D_p_jax = jnp.asarray(self.scaling.D_p, dtype=dtype)
+        D_v_jax = jnp.asarray(self.scaling.D_v, dtype=dtype)
+
+        # Convert original affine box bounds into scaled-coordinate box bounds.
+        # Original:
+        #   lower = lower_M_orig @ x_orig + lower_c_orig
+        #   upper = upper_M_orig @ x_orig + upper_c_orig
+        # With x_orig = D_p x_scaled and y_orig = D_v y_scaled:
+        #   lower_scaled = D_v^-1 (lower_M_orig @ D_p x_scaled + lower_c_orig)
+        #   upper_scaled = D_v^-1 (upper_M_orig @ D_p x_scaled + upper_c_orig)
+        lower_M = (np.asarray(lower_M_orig, dtype=np.float64) * np.asarray(self.scaling.D_p, dtype=np.float64).reshape(1, -1)) / np.asarray(self.scaling.D_v, dtype=np.float64).reshape(-1, 1)
+        upper_M = (np.asarray(upper_M_orig, dtype=np.float64) * np.asarray(self.scaling.D_p, dtype=np.float64).reshape(1, -1)) / np.asarray(self.scaling.D_v, dtype=np.float64).reshape(-1, 1)
+        lower_c = np.asarray(lower_c_orig, dtype=np.float64) / np.asarray(self.scaling.D_v, dtype=np.float64)
+        upper_c = np.asarray(upper_c_orig, dtype=np.float64) / np.asarray(self.scaling.D_v, dtype=np.float64)
 
         def make_ctx(params, vars_dict):
+            x_scaled = jnp.ravel(params["x"])
+            y_scaled = jnp.ravel(vars_dict["y"])
+
+            if self.scaling.enabled:
+                x_eval = D_p_jax * x_scaled
+                y_eval = D_v_jax * y_scaled
+            else:
+                x_eval = x_scaled
+                y_eval = y_scaled
+
             return _EvalContext(
-                y=jnp.ravel(vars_dict["y"]),
-                x=jnp.ravel(params["x"]),
+                y=y_eval,
+                x=x_eval,
                 variable_index={name: idx for idx, name in enumerate(self.variable_names)},
                 parameter_index={name: idx for idx, name in enumerate(self.parameter_names)},
             )
 
         if self._objective_callable is not None:
-            objective_fun = self._objective_callable
+            user_objective_fun = self._objective_callable
+
+            def objective_fun_unscaled(params, vars_dict):
+                if not self.scaling.enabled:
+                    return user_objective_fun(params, vars_dict)
+
+                x_orig = D_p_jax * jnp.ravel(params["x"])
+                y_orig = D_v_jax * jnp.ravel(vars_dict["y"])
+                return user_objective_fun({"x": x_orig}, {"y": y_orig})
         else:
             objective_expr = self._objective_expr
             assert objective_expr is not None
 
-            def objective_fun(params, vars_dict):
+            def objective_fun_unscaled(params, vars_dict):
                 return objective_expr.eval(make_ctx(params, vars_dict))
 
-        builder = (
-            HighLevelNLPBuilder(dtype=dtype)
-            .add_parameter("x", n_x)
-            .add_variable("y", n_y)
-            .set_objective(objective_fun)
-            .set_affine_lower_bound(var_name="y", param_name="x", M=jnp.asarray(lower_M, dtype=dtype), c=jnp.asarray(lower_c, dtype=dtype))
-            .set_affine_upper_bound(var_name="y", param_name="x", M=jnp.asarray(upper_M, dtype=dtype), c=jnp.asarray(upper_c, dtype=dtype))
-        )
 
         eq_entries = list(self.constraints.equality.items)
         ineq_entries = list(self.constraints.inequality.items)
@@ -1102,13 +1218,116 @@ class NLPOptNet:
         ineq_constraints = [entry for entry in ineq_entries if isinstance(entry, Constraint)]
         ineq_blocks = [entry for entry in ineq_entries if isinstance(entry, _BlockConstraint)]
 
+        if self.scaling.enabled and self.scaling.manual_D_v is None:
+            D_v_raw = getattr(self.scaling, "_D_v_from_bounds_raw", self.scaling.D_v)
+
+            D_v_linear = self._estimate_variable_scale_from_linear_inequalities(
+                X_original=X_original,
+                ineq_constraints=ineq_constraints,
+                make_ctx=make_ctx,
+                dtype=dtype,
+            )
+
+            if D_v_linear is not None:
+                base = np.asarray(D_v_raw, dtype=np.float64)
+                missing = base <= self.scaling.eps
+                D_v_new = np.where(missing, D_v_linear, base)
+                self.scaling.D_v = self._positive_scale(
+                    D_v_new,
+                    size=n_y,
+                    name="variable scale",
+                )
+            else:
+                use_sensitivity = (
+                    self.problem_type in {"nlp", "nonconvex"}
+                    and bool(self.scaling.use_jacobian_scaling)
+                )
+
+                if use_sensitivity:
+                    self.scaling.D_v = self._estimate_variable_scale_from_sensitivities(
+                        objective_fun=objective_fun_unscaled,
+                        eq_constraints=eq_constraints,
+                        eq_blocks=eq_blocks,
+                        ineq_constraints=ineq_constraints,
+                        ineq_blocks=ineq_blocks,
+                        make_ctx=make_ctx,
+                        dtype=dtype,
+                        X_original=X_original,
+                        D_v_base=np.asarray(D_v_raw, dtype=np.float64),
+                    )
+                else:
+                    base = np.asarray(D_v_raw, dtype=np.float64)
+                    self.scaling.D_v = self._positive_scale(
+                        np.where(base > self.scaling.eps, base, 1.0),
+                        size=n_y,
+                        name="variable scale",
+                    )
+
+            D_v_jax = jnp.asarray(self.scaling.D_v, dtype=dtype)
+
+            lower_M = (
+                np.asarray(lower_M_orig, dtype=np.float64)
+                * np.asarray(self.scaling.D_p, dtype=np.float64).reshape(1, -1)
+            ) / np.asarray(self.scaling.D_v, dtype=np.float64).reshape(-1, 1)
+
+            upper_M = (
+                np.asarray(upper_M_orig, dtype=np.float64)
+                * np.asarray(self.scaling.D_p, dtype=np.float64).reshape(1, -1)
+            ) / np.asarray(self.scaling.D_v, dtype=np.float64).reshape(-1, 1)
+
+            lower_c = np.asarray(lower_c_orig, dtype=np.float64) / np.asarray(self.scaling.D_v, dtype=np.float64)
+            upper_c = np.asarray(upper_c_orig, dtype=np.float64) / np.asarray(self.scaling.D_v, dtype=np.float64)
+
+
+        self._estimate_objective_and_constraint_scales(
+            objective_fun=objective_fun_unscaled,
+            eq_constraints=eq_constraints,
+            eq_blocks=eq_blocks,
+            ineq_constraints=ineq_constraints,
+            ineq_blocks=ineq_blocks,
+            lower_M=lower_M_orig,
+            lower_c=lower_c_orig,
+            upper_M=upper_M_orig,
+            upper_c=upper_c_orig,
+            make_ctx=make_ctx,
+            dtype=dtype,
+            X_original=X_original,
+        )
+
+        D_obj_jax = jnp.asarray(float(self.scaling.D_obj), dtype=dtype)
+
+        def objective_fun(params, vars_dict):
+            return objective_fun_unscaled(params, vars_dict) / D_obj_jax
+        
+        builder = (
+            HighLevelNLPBuilder(dtype=dtype)
+            .add_parameter("x", n_x)
+            .add_variable("y", n_y)
+            .set_objective(objective_fun)
+            .set_affine_lower_bound(var_name="y", param_name="x", M=jnp.asarray(lower_M, dtype=dtype), c=jnp.asarray(lower_c, dtype=dtype))
+            .set_affine_upper_bound(var_name="y", param_name="x", M=jnp.asarray(upper_M, dtype=dtype), c=jnp.asarray(upper_c, dtype=dtype))
+        )
+
         if eq_constraints or eq_blocks:
 
             def eq_block(params, vars_dict):
                 ctx = make_ctx(params, vars_dict)
                 pieces = [jnp.ravel(entry.residual(ctx)) for entry in eq_constraints]
-                pieces.extend(jnp.ravel(entry.fn(params, vars_dict)) for entry in eq_blocks)
-                return jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+                for entry in eq_blocks:
+                    if self.scaling.enabled:
+                        x_orig = D_p_jax * jnp.ravel(params["x"])
+                        y_orig = D_v_jax * jnp.ravel(vars_dict["y"])
+                        pieces.append(jnp.ravel(entry.fn({"x": x_orig}, {"y": y_orig})))
+                    else:
+                        pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+
+                out = jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+                if self.scaling.enabled and self.scaling.D_eq is not None:
+                    return out / jnp.asarray(self.scaling.D_eq, dtype=dtype).reshape(-1)
+
+                return out
 
             builder = builder.add_nonlinear_equality(eq_block, name="nlpoptnet_eq_block")
 
@@ -1117,13 +1336,25 @@ class NLPOptNet:
             def ineq_block(params, vars_dict):
                 ctx = make_ctx(params, vars_dict)
                 pieces = [jnp.ravel(entry.residual(ctx)) for entry in ineq_constraints]
-                pieces.extend(jnp.ravel(entry.fn(params, vars_dict)) for entry in ineq_blocks)
-                return jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+                for entry in ineq_blocks:
+                    if self.scaling.enabled:
+                        x_orig = D_p_jax * jnp.ravel(params["x"])
+                        y_orig = D_v_jax * jnp.ravel(vars_dict["y"])
+                        pieces.append(jnp.ravel(entry.fn({"x": x_orig}, {"y": y_orig})))
+                    else:
+                        pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+
+                out = jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+                if self.scaling.enabled and self.scaling.D_ineq is not None:
+                    return out / jnp.asarray(self.scaling.D_ineq, dtype=dtype).reshape(-1)
+
+                return out
 
             builder = builder.add_nonlinear_inequality(ineq_block, name="nlpoptnet_ineq_block")
 
         model = builder.build(example_params={"x": jnp.zeros((n_x,), dtype=dtype)}, jit_compile=True)
-        X = self._load_or_sample_parameters(n_x=n_x)
         train_idx, val_idx = split_train_val(X, train_frac=float(self.config["train_frac"]), seed=int(self.config["seed"]))
         effective_batch = int(min(int(self.config["batch_size"]), len(train_idx), len(val_idx)))
         train_cfg = self._train_cfg_dict(effective_batch)
@@ -1160,6 +1391,7 @@ class NLPOptNet:
             train_config=train_cfg,
             dtype=dtype,
             X=X,
+            X_original=X_original,
             train_idx=train_idx,
             val_idx=val_idx,
             train_batches=train_batches,
@@ -1173,6 +1405,10 @@ class NLPOptNet:
             violation_fn=build_violation_fn_from_jaxmodel(model, cfg=cfg, p=n_x),
             objective_fn=make_batched_objective(model),
             sub_layer=make_subproblem_layer_from_model(model),
+            lower_M=lower_M,
+            lower_c=lower_c,
+            upper_M=upper_M,
+            upper_c=upper_c,
         )
         if bool(self.config.get("verbose", True)):
             print("🤖 Model build successfully!")
@@ -1258,14 +1494,16 @@ class NLPOptNet:
                 print("Meanwhile you can take a break and stay hydrated! 🧊💧😃")
 
         X_all = jnp.asarray(build_state.X, dtype=build_state.dtype)
-        predictions = self._project_with_state(
+        predictions_scaled = self._project_with_state(
             params=state.params,
             backbone=build_state.backbone,
             sub_layer=build_state.sub_layer,
             cfg=build_state.cfg,
             X=X_all,
         )
-        objective_values = np.asarray(build_state.objective_fn(X_all, predictions), dtype=np.float64)
+        objective_values = np.asarray(build_state.objective_fn(X_all, predictions_scaled), dtype=np.float64)
+        if self.scaling.enabled:
+            objective_values = objective_values * float(self.scaling.D_obj)
         violations = build_state.violation_fn(state.params, X_all)
         max_violation = max(
             float(np.asarray(violations["eq_inf"])),
@@ -1322,8 +1560,9 @@ class NLPOptNet:
         metadata_path = run_dir / "metadata.json"
         constants_path = run_dir / "problem_constants.npz"
 
-        write_csv_matrix(parameters_path, build_state.X, headers=self.parameter_names)
-        write_csv_matrix(predictions_path, np.asarray(predictions, dtype=np.float64), headers=self.variable_names)
+        predictions_original = self._unscale_variables(np.asarray(predictions_scaled, dtype=np.float64))
+        write_csv_matrix(parameters_path, build_state.X_original, headers=self.parameter_names)
+        write_csv_matrix(predictions_path, predictions_original, headers=self.variable_names)
         self._write_history_csv(history_path, history)
         np.savez(weights_path, params=np.array(jax.device_get(state.params), dtype=object))
         backbone_metadata = save_backbone_npz(
@@ -1347,10 +1586,11 @@ class NLPOptNet:
             else None
         )
 
-        lower_M, lower_c, upper_M, upper_c = self._build_box_bounds(
-            n_x=len(self.parameter_names),
-            n_y=len(self.variable_names),
-        )
+        lower_M = build_state.lower_M
+        lower_c = build_state.lower_c
+        upper_M = build_state.upper_M
+        upper_c = build_state.upper_c
+
         metadata = {
             "format": "nlpoptnet-metadata-v1",
             "version": "0.2.0",
@@ -1370,6 +1610,20 @@ class NLPOptNet:
                     "lower_c": lower_c.tolist(),
                     "upper_M": upper_M.tolist(),
                     "upper_c": upper_c.tolist(),
+                },
+                "scaling": {
+                    "enabled": bool(self.scaling.enabled),
+                    "D_p": None if self.scaling.D_p is None else np.asarray(self.scaling.D_p, dtype=np.float64).tolist(),
+                    "D_v": None if self.scaling.D_v is None else np.asarray(self.scaling.D_v, dtype=np.float64).tolist(),
+                    "D_obj": float(self.scaling.D_obj),
+                    "D_eq": None if self.scaling.D_eq is None else np.asarray(self.scaling.D_eq, dtype=np.float64).reshape(-1).tolist(),
+                    "D_ineq": None if self.scaling.D_ineq is None else np.asarray(self.scaling.D_ineq, dtype=np.float64).reshape(-1).tolist(),
+                    "mode": str(self.scaling.mode),
+                    "use_jacobian_scaling": bool(self.scaling.use_jacobian_scaling),
+                    "probe_points": int(self.scaling.probe_points),
+                    "objective_percentile": float(self.scaling.objective_percentile),
+                    "constraint_percentile": float(self.scaling.constraint_percentile),
+                    "eps": float(self.scaling.eps),
                 },
                 "has_callable_objective": self._objective_callable is not None,
                 "has_callable_blocks": any(isinstance(entry, _BlockConstraint) for entry in self.constraints.equality.items + self.constraints.inequality.items),
@@ -1459,6 +1713,33 @@ class NLPOptNet:
         self.parameters = self.parameter
         self.variables = self.variable
         self.constraints = _ConstraintManager(self)
+        scaling_spec = payload["problem"].get("scaling", {})
+        self.scaling = _ScalingState()
+        self.scaling.enabled = bool(scaling_spec.get("enabled", False))
+
+        D_p = scaling_spec.get("D_p")
+        D_v = scaling_spec.get("D_v")
+        D_eq = scaling_spec.get("D_eq")
+        D_ineq = scaling_spec.get("D_ineq")
+
+        self.scaling.D_p = None if D_p is None else np.asarray(D_p, dtype=np.float64)
+        self.scaling.D_v = None if D_v is None else np.asarray(D_v, dtype=np.float64)
+        self.scaling.D_obj = float(scaling_spec.get("D_obj", 1.0))
+        self.scaling.D_eq = None if D_eq is None else np.asarray(D_eq, dtype=np.float64)
+        self.scaling.D_ineq = None if D_ineq is None else np.asarray(D_ineq, dtype=np.float64)
+
+        self.scaling.mode = str(scaling_spec.get("mode", "fast"))
+        self.scaling.use_jacobian_scaling = bool(scaling_spec.get("use_jacobian_scaling", False))
+        self.scaling.probe_points = int(scaling_spec.get("probe_points", 8))
+        self.scaling.objective_percentile = float(scaling_spec.get("objective_percentile", 95.0))
+        self.scaling.constraint_percentile = float(scaling_spec.get("constraint_percentile", 95.0))
+        self.scaling.eps = float(scaling_spec.get("eps", 1e-12))
+
+        if self.scaling.enabled:
+            if self.scaling.D_p is None:
+                self.scaling.D_p = np.ones((len(self.parameter_names),), dtype=np.float64)
+            if self.scaling.D_v is None:
+                self.scaling.D_v = np.ones((len(self.variable_names),), dtype=np.float64)
 
         constants_file = metadata_file.parent / payload["artifacts"]["constants"]
         constants_npz = np.load(constants_file, allow_pickle=False)
@@ -1468,7 +1749,11 @@ class NLPOptNet:
                 setattr(self, key, Constant(self, key, value))
 
         dtype = resolve_dtype(str(self.config["dtype"]))
-        model = build_model_from_problem_spec(payload["problem"], constants=self._constants, dtype=dtype)
+        model = build_model_from_problem_spec(
+            payload["problem"],
+            constants=self._constants,
+            dtype=dtype,
+        )
         n_x = len(self.parameter_names)
         y0 = jnp.zeros((model.var_spec.total_size,), dtype=dtype)
         x0 = jnp.zeros((n_x,), dtype=dtype)
@@ -1549,18 +1834,25 @@ class NLPOptNet:
         )
         if backend == "native" and self._inference_state.native_projection is None:
             raise RuntimeError("This run does not have a loadable native projection artifact.")
-        x_batch = jnp.asarray(data, dtype=resolve_dtype(str(self._inference_state.train_config["dtype"])))
+        if self.scaling.enabled:
+            assert self.scaling.D_p is not None
+            data_internal = data / self.scaling.D_p.reshape(1, -1)
+        else:
+            data_internal = data
+
+        x_batch = jnp.asarray(data_internal, dtype=resolve_dtype(str(self._inference_state.train_config["dtype"])))
         projected = self._project_with_state(
             params=self._inference_state.params,
             backbone=self._inference_state.backbone,
             sub_layer=self._inference_state.sub_layer,
             cfg=self._inference_state.cfg,
             X=x_batch,
-            X_numpy=data,
+            X_numpy=data_internal,
             native_projection=self._inference_state.native_projection if use_native else None,
             native_backbone=self._inference_state.native_backbone,
         )
         out = np.asarray(projected, dtype=np.float64)
+        out = self._unscale_variables(out)
         return out[0] if squeeze else out
 
     def summary(self) -> dict[str, Any]:
@@ -2105,26 +2397,512 @@ class NLPOptNet:
         if explicit is not None:
             return int(explicit)
         return int(self.config.get("num_samples", 1000))
+    
+    def _positive_scale(self, value, *, size: int | None = None, name: str = "scale") -> np.ndarray:
+        arr = np.asarray(value, dtype=np.float64).reshape(-1)
+
+        if size is not None:
+            if arr.size == 1:
+                arr = np.full((size,), float(arr[0]), dtype=np.float64)
+            if arr.shape != (size,):
+                raise ValueError(f"{name} must have shape ({size},), got {arr.shape}.")
+
+        arr = np.abs(arr)
+        arr = np.where(np.isfinite(arr), arr, 1.0)
+        arr = np.where(arr > float(self.scaling.eps), arr, 1.0)
+        return arr
+
+
+    def _positive_scalar_scale(self, value, *, name: str = "scale") -> float:
+        arr = self._positive_scale([value], size=1, name=name)
+        return float(arr[0])
+
+
+    def _scaled_parameters(self, X_original: np.ndarray) -> np.ndarray:
+        if not self.scaling.enabled:
+            return np.asarray(X_original, dtype=np.float64)
+
+        assert self.scaling.D_p is not None
+        return np.asarray(X_original, dtype=np.float64) / self.scaling.D_p.reshape(1, -1)
+
+
+    def _unscale_variables(self, Y_scaled: np.ndarray) -> np.ndarray:
+        if not self.scaling.enabled:
+            return np.asarray(Y_scaled, dtype=np.float64)
+
+        assert self.scaling.D_v is not None
+        return np.asarray(Y_scaled, dtype=np.float64) * self.scaling.D_v.reshape(1, -1)
+
+
+    def _eval_affine_bounds_numpy(self, X_original: np.ndarray, lower_M, lower_c, upper_M, upper_c):
+        L = np.asarray(X_original, dtype=np.float64) @ np.asarray(lower_M, dtype=np.float64).T + np.asarray(lower_c, dtype=np.float64)
+        U = np.asarray(X_original, dtype=np.float64) @ np.asarray(upper_M, dtype=np.float64).T + np.asarray(upper_c, dtype=np.float64)
+        return L, U
+
+    def _estimate_variable_scale_from_linear_inequalities(
+        self,
+        *,
+        X_original: np.ndarray,
+        ineq_constraints,
+        make_ctx,
+        dtype,
+    ) -> np.ndarray | None:
+        n_y = len(self.variable_names)
+        sample_count = min(int(self.scaling.probe_points), int(X_original.shape[0]))
+
+        y0 = jnp.zeros((n_y,), dtype=dtype)
+        scales = np.zeros((n_y,), dtype=np.float64)
+
+        for i in range(sample_count):
+            x0 = jnp.asarray(self._scaled_parameters(X_original[[i]])[0], dtype=dtype)
+
+            def residual_y(y_scaled):
+                params = {"x": x0}
+                vars_dict = {"y": y_scaled}
+                ctx = make_ctx(params, vars_dict)
+                pieces = [jnp.ravel(entry.residual(ctx)) for entry in ineq_constraints]
+                return jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+            try:
+                r0 = np.asarray(residual_y(y0), dtype=np.float64)
+                J = np.asarray(jax.jacobian(residual_y)(y0), dtype=np.float64)
+
+                # residual form is A*y - rhs <= 0.
+                # At y=0, rhs scale is about abs(r0).
+                for j in range(n_y):
+                    coeff = np.abs(J[:, j])
+                    valid = coeff > self.scaling.eps
+                    if np.any(valid):
+                        candidate = np.max(np.abs(r0[valid]) / coeff[valid])
+                        scales[j] = max(scales[j], candidate)
+            except Exception:
+                pass
+
+        if np.all(scales <= self.scaling.eps):
+            return None
+
+        return self._positive_scale(scales, size=n_y, name="variable scale")
+
+    def _estimate_variable_scale_from_sensitivities(
+        self,
+        *,
+        objective_fun,
+        eq_constraints,
+        eq_blocks,
+        ineq_constraints,
+        ineq_blocks,
+        make_ctx,
+        dtype,
+        X_original: np.ndarray,
+        D_v_base: np.ndarray,
+    ) -> np.ndarray:
+        n_y = len(self.variable_names)
+        sample_count = min(int(self.scaling.probe_points), int(X_original.shape[0]))
+
+        X_probe_original = np.asarray(X_original[:sample_count], dtype=np.float64)
+        X_probe_scaled = self._scaled_parameters(X_probe_original)
+
+        D_v_tmp = np.where(D_v_base > self.scaling.eps, D_v_base, 1.0)
+
+        grad_values = []
+
+        def residual_sum(y_scaled, x_scaled):
+            params = {"x": x_scaled}
+            vars_dict = {"y": y_scaled}
+            ctx = make_ctx(params, vars_dict)
+
+            val = objective_fun(params, vars_dict)
+
+            pieces = []
+            for entry in eq_constraints:
+                pieces.append(jnp.ravel(entry.residual(ctx)))
+            for entry in ineq_constraints:
+                pieces.append(jnp.ravel(entry.residual(ctx)))
+            for entry in eq_blocks:
+                pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+            for entry in ineq_blocks:
+                pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+
+            if pieces:
+                res = jnp.concatenate(pieces, axis=0)
+                val = val + jnp.sum(res ** 2)
+
+            return val
+
+        grad_fn = jax.grad(residual_sum, argnums=0)
+
+        for i in range(sample_count):
+            x_s = jnp.asarray(X_probe_scaled[i], dtype=dtype)
+            y_s = jnp.zeros((n_y,), dtype=dtype)
+
+            try:
+                g = np.asarray(grad_fn(y_s, x_s), dtype=np.float64).reshape(-1)
+                grad_values.append(np.abs(g))
+            except Exception:
+                pass
+
+        if not grad_values:
+            return D_v_tmp
+
+        G = np.stack(grad_values, axis=0)
+        sensitivity = np.percentile(G, float(self.scaling.constraint_percentile), axis=0)
+
+        sensitivity = np.where(np.isfinite(sensitivity), sensitivity, 0.0)
+        sensitivity = np.where(sensitivity > self.scaling.eps, sensitivity, 1.0)
+
+        # Only fill variables whose scale was not determined by finite bounds.
+        missing = D_v_base <= self.scaling.eps
+        D_v_new = D_v_tmp.copy()
+        D_v_new[missing] = sensitivity[missing]
+
+        return self._positive_scale(D_v_new, size=n_y, name="variable scale")
+    def _compute_basic_scales(self, *, X_original: np.ndarray, lower_M, lower_c, upper_M, upper_c) -> None:
+        n_x = len(self.parameter_names)
+        n_y = len(self.variable_names)
+
+        if not self.scaling.enabled:
+            self.scaling.D_p = np.ones((n_x,), dtype=np.float64)
+            self.scaling.D_v = np.ones((n_y,), dtype=np.float64)
+            self.scaling.D_obj = 1.0
+            self.scaling.D_eq = None
+            self.scaling.D_ineq = None
+            return
+
+        if self.scaling.manual_D_p is not None:
+            self.scaling.D_p = self._positive_scale(self.scaling.manual_D_p, size=n_x, name="parameter scale")
+        else:
+            self.scaling.D_p = self._positive_scale(np.max(np.abs(X_original), axis=0), size=n_x, name="parameter scale")
+
+        if self.scaling.manual_D_v is not None:
+            self.scaling.D_v = self._positive_scale(self.scaling.manual_D_v, size=n_y, name="variable scale")
+        else:
+            L, U = self._eval_affine_bounds_numpy(
+                X_original,
+                lower_M,
+                lower_c,
+                upper_M,
+                upper_c,
+            )
+
+            finite_L = np.where(np.isfinite(L), np.abs(L), 0.0)
+            finite_U = np.where(np.isfinite(U), np.abs(U), 0.0)
+
+            D_v = np.maximum(
+                np.max(finite_L, axis=0),
+                np.max(finite_U, axis=0),
+            )
+
+            # Do not finalize missing entries here.
+            # Missing entries will be filled later using sensitivities.
+            self.scaling.D_v = self._positive_scale(
+                np.where(D_v > self.scaling.eps, D_v, 1.0),
+                size=n_y,
+                name="variable scale",
+            )
+
+            self.scaling._D_v_from_bounds_raw = D_v
+
+    def _estimate_linear_objective_scale(self) -> float | None:
+        if self._objective_expr is None:
+            return None
+
+        n_x = len(self.parameter_names)
+        n_y = len(self.variable_names)
+
+        y0 = jnp.zeros((n_y,), dtype=jnp.float64)
+        x0 = jnp.zeros((n_x,), dtype=jnp.float64)
+
+        variable_index = {name: idx for idx, name in enumerate(self.variable_names)}
+        parameter_index = {name: idx for idx, name in enumerate(self.parameter_names)}
+
+        def obj_y(y):
+            ctx = _EvalContext(
+                y=y,
+                x=x0,
+                variable_index=variable_index,
+                parameter_index=parameter_index,
+            )
+            return self._objective_expr.eval(ctx)
+
+        try:
+            c = np.asarray(jax.grad(obj_y)(y0), dtype=np.float64).reshape(-1)
+        except Exception:
+            return None
+
+        if c.shape != (n_y,) or not np.all(np.isfinite(c)):
+            return None
+
+        if self.scaling.D_v is None:
+            D_v = np.ones((n_y,), dtype=np.float64)
+        else:
+            D_v = np.asarray(self.scaling.D_v, dtype=np.float64).reshape(-1)
+
+        scale = float(np.max(np.abs(c * D_v)))
+
+        if not np.isfinite(scale) or scale <= self.scaling.eps:
+            return None
+
+        return scale
+
+    def _estimate_objective_and_constraint_scales(
+        self,
+        *,
+        objective_fun,
+        eq_constraints,
+        eq_blocks,
+        ineq_constraints,
+        ineq_blocks,
+        lower_M,
+        lower_c,
+        upper_M,
+        upper_c,
+        make_ctx,
+        dtype,
+        X_original: np.ndarray,
+    ) -> None:
+        if not self.scaling.enabled:
+            return
+
+        n_y = len(self.variable_names)
+        sample_count = min(int(self.scaling.probe_points), int(X_original.shape[0]))
+
+        X_probe_original = np.asarray(X_original[:sample_count], dtype=np.float64)
+        X_probe_scaled = self._scaled_parameters(X_probe_original)
+
+        rng = np.random.default_rng(int(self.config.get("seed", 42)))
+
+        if self.scaling.use_jacobian_scaling:
+            y_probes = [
+                np.zeros((n_y,), dtype=np.float64),
+                0.5 * np.ones((n_y,), dtype=np.float64),
+                np.ones((n_y,), dtype=np.float64),
+                rng.uniform(-1.0, 1.0, size=(n_y,)),
+            ]
+        else:
+            y_probes = [
+                np.zeros((n_y,), dtype=np.float64),
+            ]
+
+        obj_values = []
+        obj_grad_values = []
+
+        eq_values = []
+        eq_jac_values = []
+
+        ineq_values = []
+        ineq_jac_values = []
+
+        def eval_eq(y_scaled, x_scaled):
+            params = {"x": x_scaled}
+            vars_dict = {"y": y_scaled}
+            ctx = make_ctx(params, vars_dict)
+
+            pieces = []
+            for entry in eq_constraints:
+                pieces.append(jnp.ravel(entry.residual(ctx)))
+            for entry in eq_blocks:
+                pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+
+            return jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+        def eval_ineq(y_scaled, x_scaled):
+            params = {"x": x_scaled}
+            vars_dict = {"y": y_scaled}
+            ctx = make_ctx(params, vars_dict)
+
+            pieces = []
+            for entry in ineq_constraints:
+                pieces.append(jnp.ravel(entry.residual(ctx)))
+            for entry in ineq_blocks:
+                pieces.append(jnp.ravel(entry.fn(params, vars_dict)))
+
+            return jnp.concatenate(pieces, axis=0) if pieces else jnp.zeros((0,), dtype=dtype)
+
+        def eval_obj(y_scaled, x_scaled):
+            return objective_fun({"x": x_scaled}, {"y": y_scaled})
+
+        use_jac = (
+            self.problem_type in {"nlp", "nonconvex"}
+            and bool(self.scaling.use_jacobian_scaling)
+        )
+
+        if use_jac:
+            grad_obj = jax.grad(eval_obj, argnums=0)
+            jac_eq = jax.jacobian(eval_eq, argnums=0)
+            jac_ineq = jax.jacobian(eval_ineq, argnums=0)
+        else:
+            grad_obj = None
+            jac_eq = None
+            jac_ineq = None
+
+        for i in range(sample_count):
+            x_s = jnp.asarray(X_probe_scaled[i], dtype=dtype)
+
+            for y_np in y_probes:
+                y_s = jnp.asarray(y_np, dtype=dtype)
+
+                try:
+                    val = float(np.asarray(eval_obj(y_s, x_s)))
+                    if np.isfinite(val):
+                        obj_values.append(abs(val))
+                except Exception:
+                    pass
+
+                if grad_obj is not None:
+                    try:
+                        g = np.asarray(grad_obj(y_s, x_s), dtype=np.float64).reshape(-1)
+                        if np.all(np.isfinite(g)):
+                            obj_grad_values.append(np.linalg.norm(g, ord=np.inf))
+                    except Exception:
+                        pass
+
+                try:
+                    h = np.asarray(eval_eq(y_s, x_s), dtype=np.float64).reshape(-1)
+                    if h.size > 0 and np.all(np.isfinite(h)):
+                        eq_values.append(np.abs(h))
+                except Exception:
+                    pass
+
+                if jac_eq is not None:
+                    try:
+                        Jh = np.asarray(jac_eq(y_s, x_s), dtype=np.float64)
+                        if Jh.size > 0 and np.all(np.isfinite(Jh)):
+                            eq_jac_values.append(np.max(np.abs(Jh), axis=1))
+                    except Exception:
+                        pass
+
+                try:
+                    gval = np.asarray(eval_ineq(y_s, x_s), dtype=np.float64).reshape(-1)
+                    if gval.size > 0 and np.all(np.isfinite(gval)):
+                        ineq_values.append(np.abs(gval))
+                except Exception:
+                    pass
+
+                if jac_ineq is not None:
+                    try:
+                        Jg = np.asarray(jac_ineq(y_s, x_s), dtype=np.float64)
+                        if Jg.size > 0 and np.all(np.isfinite(Jg)):
+                            ineq_jac_values.append(np.max(np.abs(Jg), axis=1))
+                    except Exception:
+                        pass
+
+        p_obj = float(self.scaling.objective_percentile)
+        p_con = float(self.scaling.constraint_percentile)
+
+        if self.scaling.manual_D_obj is not None:
+            self.scaling.D_obj = self._positive_scalar_scale(
+                self.scaling.manual_D_obj,
+                name="objective scale",
+            )
+        else:
+            candidates = []
+
+            linear_obj_scale = self._estimate_linear_objective_scale()
+            if linear_obj_scale is not None:
+                candidates.append(linear_obj_scale)
+
+            if obj_values:
+                candidates.append(
+                    np.percentile(
+                        np.asarray(obj_values, dtype=np.float64),
+                        float(self.scaling.objective_percentile),
+                    )
+                )
+
+            if obj_grad_values:
+                candidates.append(
+                    np.percentile(
+                        np.asarray(obj_grad_values, dtype=np.float64),
+                        float(self.scaling.objective_percentile),
+                    )
+                )
+
+            self.scaling.D_obj = self._positive_scalar_scale(
+                max(candidates) if candidates else 1.0,
+                name="objective scale",
+            )
+
+        if self.scaling.manual_D_eq is not None:
+            eq_size = None
+            if eq_values:
+                eq_size = int(np.stack(eq_values, axis=0).shape[1])
+            self.scaling.D_eq = self._positive_scale(
+                self.scaling.manual_D_eq,
+                size=eq_size,
+                name="equality scale",
+            )
+        elif eq_values or eq_jac_values:
+            candidates = []
+
+            if eq_values:
+                H = np.stack(eq_values, axis=0)
+                candidates.append(np.percentile(H, p_con, axis=0))
+
+            if eq_jac_values:
+                JH = np.stack(eq_jac_values, axis=0)
+                candidates.append(np.percentile(JH, p_con, axis=0))
+
+            D_eq = np.maximum.reduce(candidates)
+            self.scaling.D_eq = self._positive_scale(
+                D_eq,
+                size=D_eq.shape[0],
+                name="equality scale",
+            )
+        else:
+            self.scaling.D_eq = None
+
+        if self.scaling.manual_D_ineq is not None:
+            ineq_size = None
+            if ineq_values:
+                ineq_size = int(np.stack(ineq_values, axis=0).shape[1])
+            self.scaling.D_ineq = self._positive_scale(
+                self.scaling.manual_D_ineq,
+                size=ineq_size,
+                name="inequality scale",
+            )
+        elif ineq_values or ineq_jac_values:
+            candidates = []
+
+            if ineq_values:
+                G = np.stack(ineq_values, axis=0)
+                candidates.append(np.percentile(G, p_con, axis=0))
+
+            if ineq_jac_values:
+                JG = np.stack(ineq_jac_values, axis=0)
+                candidates.append(np.percentile(JG, p_con, axis=0))
+
+            D_ineq = np.maximum.reduce(candidates)
+            self.scaling.D_ineq = self._positive_scale(
+                D_ineq,
+                size=D_ineq.shape[0],
+                name="inequality scale",
+            )
+        else:
+            self.scaling.D_ineq = None
 
     def _build_box_bounds(self, *, n_x: int, n_y: int):
-        default_radius = float(self.config.get("y_bound", 10.0))
+        # Default: unbounded variables
         lower_M = np.zeros((n_y, n_x), dtype=np.float64)
-        lower_c = -default_radius * np.ones((n_y,), dtype=np.float64)
+        lower_c = np.full((n_y,), -np.inf, dtype=np.float64)
+
         upper_M = np.zeros((n_y, n_x), dtype=np.float64)
-        upper_c = default_radius * np.ones((n_y,), dtype=np.float64)
+        upper_c = np.full((n_y,), np.inf, dtype=np.float64)
 
         for entry in self.constraints.box.items:
             if isinstance(entry, _VectorBound):
                 if entry.lower is not None:
                     lower_M = np.asarray(entry.lower.matrix, dtype=np.float64)
                     lower_c = np.asarray(entry.lower.const, dtype=np.float64)
+
                 if entry.upper is not None:
                     upper_M = np.asarray(entry.upper.matrix, dtype=np.float64)
                     upper_c = np.asarray(entry.upper.const, dtype=np.float64)
+
             elif isinstance(entry, _ScalarBound):
                 if entry.lower is not None:
                     lower_M[entry.index] = np.asarray(entry.lower.coeff, dtype=np.float64)
                     lower_c[entry.index] = float(entry.lower.const)
+
                 if entry.upper is not None:
                     upper_M[entry.index] = np.asarray(entry.upper.coeff, dtype=np.float64)
                     upper_c[entry.index] = float(entry.upper.const)

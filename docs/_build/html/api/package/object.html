@@ -17,7 +17,6 @@
       <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -51,10 +50,7 @@
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Package</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Object</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#role-of-the-object">Role of the object</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#autodoc">Autodoc</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet"><code class="docutils literal notranslate"><span class="pre">NLPOptNet</span></code></a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="#autodoc">Autodoc</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="hyperparameters.html">Hyperparameters</a></li>
@@ -96,7 +92,7 @@
              
   <section id="object">
 <h1>Object<a class="headerlink" href="#object" title="Link to this heading"></a></h1>
-<p>The primary object in the package is <a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet</span></code></a>.</p>
+<p>The primary object in the package is <code class="xref py py-class docutils literal notranslate"><span class="pre">nlpoptnet.api.NLPOptNet</span></code>.</p>
 <p>For the configuration “tab” associated with this object, see <a class="reference internal" href="hyperparameters.html"><span class="doc">Hyperparameters</span></a>.</p>
 <section id="role-of-the-object">
 <h2>Role of the object<a class="headerlink" href="#role-of-the-object" title="Link to this heading"></a></h2>
@@ -112,224 +108,6 @@
 </section>
 <section id="autodoc">
 <h2>Autodoc<a class="headerlink" href="#autodoc" title="Link to this heading"></a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nlpoptnet.api.</span></span><span class="sig-name descname"><span class="pre">NLPOptNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>User-facing interface for symbolic modeling, training, and inference.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> – Dictionary of training and projection hyperparameters. Required keys
-include <code class="docutils literal notranslate"><span class="pre">epochs</span></code>, <code class="docutils literal notranslate"><span class="pre">batch_size</span></code>, <code class="docutils literal notranslate"><span class="pre">learning_rate</span></code>,
-<code class="docutils literal notranslate"><span class="pre">hidden_size</span></code>, and <code class="docutils literal notranslate"><span class="pre">hidden_layers</span></code>. Additional supported keys
-include <code class="docutils literal notranslate"><span class="pre">train_frac</span></code>, <code class="docutils literal notranslate"><span class="pre">seed</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha_consistency</span></code>, <code class="docutils literal notranslate"><span class="pre">cp_mode</span></code>,
-<code class="docutils literal notranslate"><span class="pre">cp_iters</span></code>, <code class="docutils literal notranslate"><span class="pre">cp_tol</span></code>, <code class="docutils literal notranslate"><span class="pre">safety</span></code>, <code class="docutils literal notranslate"><span class="pre">knorm_iters</span></code>,
-<code class="docutils literal notranslate"><span class="pre">knorm_seed</span></code>, <code class="docutils literal notranslate"><span class="pre">adjoint_iters</span></code>, <code class="docutils literal notranslate"><span class="pre">k_layer</span></code>, <code class="docutils literal notranslate"><span class="pre">use_ruiz</span></code>,
-<code class="docutils literal notranslate"><span class="pre">ruiz_iters</span></code>, <code class="docutils literal notranslate"><span class="pre">dtype</span></code>, <code class="docutils literal notranslate"><span class="pre">device</span></code>, <code class="docutils literal notranslate"><span class="pre">jit_warmup</span></code>,
-<code class="docutils literal notranslate"><span class="pre">num_samples</span></code>, <code class="docutils literal notranslate"><span class="pre">y_bound</span></code>, <code class="docutils literal notranslate"><span class="pre">native_projection</span></code>, <code class="docutils literal notranslate"><span class="pre">print_every</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">verbose</span></code>.</p></li>
-<li><p><strong>type</strong> – Optional structured problem label such as <code class="docutils literal notranslate"><span class="pre">qp</span></code>, <code class="docutils literal notranslate"><span class="pre">qcqp</span></code>, <code class="docutils literal notranslate"><span class="pre">nlp</span></code>,
-or <code class="docutils literal notranslate"><span class="pre">nonconvex</span></code>.</p></li>
-<li><p><strong>name</strong> – Optional name used when saving timestamped run directories.</p></li>
-</ul>
-</dd>
-</dl>
-<p class="rubric">Notes</p>
-<p><code class="docutils literal notranslate"><span class="pre">NLPOptNet</span></code> is designed around parametric optimization problems of the
-form</p>
-<div class="math notranslate nohighlight">
-\[\begin{split}\begin{aligned}
-    \min_y \quad &amp; f(y, x) \\
-    \text{s.t.}\quad &amp; h(y, x) = 0, \\
-    &amp; g(y, x) \le 0, \\
-    &amp; \ell(x) \le y \le u(x),
-\end{aligned}\end{split}\]</div>
-<p>where <span class="math notranslate nohighlight">\(x\)</span> is the parameter vector and <span class="math notranslate nohighlight">\(y\)</span> is the decision
-vector. The learned model approximates the mapping</p>
-<div class="math notranslate nohighlight">
-\[x \mapsto y^\star(x)\]</div>
-<p>by combining:</p>
-<ul class="simple">
-<li><p>a symbolic problem definition,</p></li>
-<li><p>a neural backbone that predicts warm starts,</p></li>
-<li><p>a projection layer that enforces local feasibility structure.</p></li>
-</ul>
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.__init__" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.add_parameter">
-<span class="sig-name descname"><span class="pre">add_parameter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.add_parameter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.add_parameter" title="Link to this definition"></a></dt>
-<dd><p>Register one or more parameter symbols and return the namespace.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.add_variable">
-<span class="sig-name descname"><span class="pre">add_variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.add_variable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.add_variable" title="Link to this definition"></a></dt>
-<dd><p>Register one or more decision-variable symbols and return the namespace.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.objective">
-<span class="sig-name descname"><span class="pre">objective</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.objective"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.objective" title="Link to this definition"></a></dt>
-<dd><p>Set the scalar objective from an expression or callable.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.matrix">
-<span class="sig-name descname"><span class="pre">matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="entities.html#nlpoptnet.api.Constant" title="nlpoptnet.api.Constant"><span class="pre">Constant</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.matrix" title="Link to this definition"></a></dt>
-<dd><p>Register a constant matrix and return its wrapper.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.vector">
-<span class="sig-name descname"><span class="pre">vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="entities.html#nlpoptnet.api.Constant" title="nlpoptnet.api.Constant"><span class="pre">Constant</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.vector" title="Link to this definition"></a></dt>
-<dd><p>Register a constant vector and return its wrapper.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.tensor">
-<span class="sig-name descname"><span class="pre">tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="entities.html#nlpoptnet.api.Constant" title="nlpoptnet.api.Constant"><span class="pre">Constant</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.tensor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.tensor" title="Link to this definition"></a></dt>
-<dd><p>Register a constant tensor and return its wrapper.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.extract">
-<span class="sig-name descname"><span class="pre">extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="entities.html#nlpoptnet.api.Constant" title="nlpoptnet.api.Constant"><span class="pre">Constant</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.extract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.extract" title="Link to this definition"></a></dt>
-<dd><p>Load constants from a <code class="docutils literal notranslate"><span class="pre">problem.npz</span></code> file into the model.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.dataset">
-<span class="sig-name descname"><span class="pre">dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.dataset" title="Link to this definition"></a></dt>
-<dd><p>Use a CSV file of parameter samples as the dataset source.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.simplex">
-<span class="sig-name descname"><span class="pre">simplex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">constraints</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.simplex"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.simplex" title="Link to this definition"></a></dt>
-<dd><p>Sample parameters from a simplex or more general polytope region.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.box">
-<span class="sig-name descname"><span class="pre">box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lower</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upper</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.box" title="Link to this definition"></a></dt>
-<dd><p>Sample parameters from an axis-aligned box.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.parameter_region">
-<span class="sig-name descname"><span class="pre">parameter_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.parameter_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.parameter_region" title="Link to this definition"></a></dt>
-<dd><p>Validate or activate a parameter-region mode.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.lin">
-<span class="sig-name descname"><span class="pre">lin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.lin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.lin" title="Link to this definition"></a></dt>
-<dd><p>Form an affine expression <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">&#64;</span> <span class="pre">expr</span></code>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.batch_lin">
-<span class="sig-name descname"><span class="pre">batch_lin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.batch_lin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.batch_lin" title="Link to this definition"></a></dt>
-<dd><p>Form a batched affine vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.quad">
-<span class="sig-name descname"><span class="pre">quad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.quad"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.quad" title="Link to this definition"></a></dt>
-<dd><p>Form a quadratic scalar expression <code class="docutils literal notranslate"><span class="pre">expr^T</span> <span class="pre">Q</span> <span class="pre">expr</span></code>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.batch_quad">
-<span class="sig-name descname"><span class="pre">batch_quad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.batch_quad"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.batch_quad" title="Link to this definition"></a></dt>
-<dd><p>Form batched quadratic expressions from a rank-3 tensor.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.batch_exp">
-<span class="sig-name descname"><span class="pre">batch_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.batch_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.batch_exp" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise exponential to a vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.sin">
-<span class="sig-name descname"><span class="pre">sin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.sin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.sin" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise sine to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.cos">
-<span class="sig-name descname"><span class="pre">cos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.cos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.cos" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise cosine to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.exp">
-<span class="sig-name descname"><span class="pre">exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.exp" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise exponential to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.log">
-<span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.log" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise logarithm to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.sqrt">
-<span class="sig-name descname"><span class="pre">sqrt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.sqrt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.sqrt" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise square root to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.abs">
-<span class="sig-name descname"><span class="pre">abs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.abs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.abs" title="Link to this definition"></a></dt>
-<dd><p>Apply elementwise absolute value to a scalar or vector expression.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.build"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.build" title="Link to this definition"></a></dt>
-<dd><p>Build the symbolic model, dataset split, and train-time state.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.optimize">
-<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.optimize" title="Link to this definition"></a></dt>
-<dd><p>Train the model, save artifacts, and return run metadata.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.load">
-<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#nlpoptnet.api.NLPOptNet" title="nlpoptnet.api.NLPOptNet"><span class="pre">NLPOptNet</span></a></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.load" title="Link to this definition"></a></dt>
-<dd><p>Load a previously saved serializable model run from metadata.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'auto'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.predict" title="Link to this definition"></a></dt>
-<dd><p>Predict projected variables for one sample or a batch of samples.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.summary">
-<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.summary" title="Link to this definition"></a></dt>
-<dd><p>Print a compact summary of the current completed or loaded run.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="nlpoptnet.api.NLPOptNet.plot_history">
-<span class="sig-name descname"><span class="pre">plot_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'grey'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nlpoptnet/api.html#NLPOptNet.plot_history"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nlpoptnet.api.NLPOptNet.plot_history" title="Link to this definition"></a></dt>
-<dd><p>Plot and save objective and violation history curves.</p>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 </section>
 

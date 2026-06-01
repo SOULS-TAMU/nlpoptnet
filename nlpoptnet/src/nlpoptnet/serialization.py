@@ -117,6 +117,24 @@ def build_model_from_problem_spec(
     upper_M = jnp.asarray(problem_spec["bounds"]["upper_M"], dtype=dtype)
     upper_c = jnp.asarray(problem_spec["bounds"]["upper_c"], dtype=dtype)
 
+    scaling = problem_spec.get("scaling", {})
+    scaling_enabled = bool(scaling.get("enabled", False))
+
+    D_p = jnp.asarray(
+        scaling.get("D_p", [1.0] * len(parameter_names)),
+        dtype=dtype,
+    )
+    D_v = jnp.asarray(
+        scaling.get("D_v", [1.0] * len(variable_names)),
+        dtype=dtype,
+    )
+    D_obj = jnp.asarray(float(scaling.get("D_obj", 1.0)), dtype=dtype)
+
+    D_eq_raw = scaling.get("D_eq")
+    D_ineq_raw = scaling.get("D_ineq")
+    D_eq = None if D_eq_raw is None else jnp.asarray(D_eq_raw, dtype=dtype).reshape(-1)
+    D_ineq = None if D_ineq_raw is None else jnp.asarray(D_ineq_raw, dtype=dtype).reshape(-1)
+
     objective_fn = make_scalar_eval_fn(
         objective_text,
         parameter_names=parameter_names,
@@ -125,7 +143,17 @@ def build_model_from_problem_spec(
     )
 
     def objective(params, vars_dict):
-        return objective_fn(vars_dict["y"], params["x"])
+        x_scaled = params["x"]
+        y_scaled = vars_dict["y"]
+
+        if scaling_enabled:
+            x_eval = D_p * x_scaled
+            y_eval = D_v * y_scaled
+        else:
+            x_eval = x_scaled
+            y_eval = y_scaled
+
+        return objective_fn(y_eval, x_eval) / D_obj
 
     builder = (
         HighLevelNLPBuilder(dtype=dtype)
@@ -148,9 +176,22 @@ def build_model_from_problem_spec(
         ]
 
         def eq_block(params, vars_dict):
-            y_vec = vars_dict["y"]
-            x_vec = params["x"]
-            return jnp.concatenate([jnp.ravel(fn(y_vec, x_vec)) for fn in eq_fns], axis=0)
+            x_scaled = params["x"]
+            y_scaled = vars_dict["y"]
+
+            if scaling_enabled:
+                x_vec = D_p * x_scaled
+                y_vec = D_v * y_scaled
+            else:
+                x_vec = x_scaled
+                y_vec = y_scaled
+
+            out = jnp.concatenate([jnp.ravel(fn(y_vec, x_vec)) for fn in eq_fns], axis=0)
+
+            if scaling_enabled and D_eq is not None:
+                out = out / D_eq
+
+            return out
 
         builder = builder.add_nonlinear_equality(eq_block, name="serialized_eq_block")
 
@@ -166,9 +207,22 @@ def build_model_from_problem_spec(
         ]
 
         def ineq_block(params, vars_dict):
-            y_vec = vars_dict["y"]
-            x_vec = params["x"]
-            return jnp.concatenate([jnp.ravel(fn(y_vec, x_vec)) for fn in ineq_fns], axis=0)
+            x_scaled = params["x"]
+            y_scaled = vars_dict["y"]
+
+            if scaling_enabled:
+                x_vec = D_p * x_scaled
+                y_vec = D_v * y_scaled
+            else:
+                x_vec = x_scaled
+                y_vec = y_scaled
+
+            out = jnp.concatenate([jnp.ravel(fn(y_vec, x_vec)) for fn in ineq_fns], axis=0)
+
+            if scaling_enabled and D_ineq is not None:
+                out = out / D_ineq
+
+            return out
 
         builder = builder.add_nonlinear_inequality(ineq_block, name="serialized_ineq_block")
 
