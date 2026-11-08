@@ -1,0 +1,63 @@
+name: Validation
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    name: Build, install and smoke-test / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+        working-directory: nlpoptnet
+    env:
+      JAX_PLATFORMS: cpu
+      JAX_ENABLE_X64: 'true'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install build twine pytest
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - run: python -m pip install "purin @ git+https://github.com/SOULS-TAMU/Purin.git@179567dddb57e919099c78f9917dfa45445a5f39" dist/*.whl
+      - run: python -m pip check
+      - run: python -m pytest -q tests/test_workflow.py
+  structure:
+    name: Complexity, duplication and dependency boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: nlpoptnet
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install radon complexipy
+      - run: |
+          radon cc -j src > cyclomatic-complexity.json
+          complexipy src --ignore-complexity --output cognitive-complexity.json --output-format json
+          npx --yes jscpd@5.4.2 --reporters json --output quality-duplication --min-tokens 80 --min-lines 6 --silent src
+          python ../.github/scripts/dependency_boundaries.py src
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: structural-metrics
+          path: |
+            nlpoptnet/*complex*.json
+            nlpoptnet/quality-duplication/jscpd-report.json
+          if-no-files-found: error

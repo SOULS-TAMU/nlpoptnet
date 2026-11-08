@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlpoptnet"
-version = "0.1.0"
+version = "2.0.0"
 description = "NLPOptNet frontend on shared OHAGI components"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["ohagi[flax,optax,plotting,export]>=1.0.0,<2.0.0", "purin>=1.0.0,<2.0.0"]
+dependencies = ["ohagi[flax,optax,plotting,export]>=1.0.0,<2.0.0", "purin>=1.0.1,<2.0.0"]
 
 license = "Apache-2.0"
 license-files = ["LICENSE*", "NOTICE"]
@@ -44,3 +44,18 @@ docstring-code-format = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["nlpoptnet"]
+
+[tool.coverage.report]
+show_missing = true
+precision = 1
+include_namespace_packages = true
+fail_under = 60

@@ -594,47 +594,48 @@ def _collect_scaling_probes(
         for y_np in y_probes:
             y_s = jnp.asarray(y_np, dtype=dtype)
 
-            try:
-                val = float(np.asarray(eval_obj(y_s, x_s)))
-                if np.isfinite(val):
-                    obj_values.append(abs(val))
-            except Exception:
-                pass
+            _append_objective_probe(
+                eval_obj, grad_obj, y_s, x_s, obj_values, obj_grad_values
+            )
+            _append_constraint_probe(
+                eval_eq, jac_eq, y_s, x_s, eq_values, eq_jac_values
+            )
+            _append_constraint_probe(
+                eval_ineq, jac_ineq, y_s, x_s, ineq_values, ineq_jac_values
+            )
 
-            if grad_obj is not None:
-                try:
-                    g = np.asarray(grad_obj(y_s, x_s), dtype=np.float64).reshape(-1)
-                    if np.all(np.isfinite(g)):
-                        obj_grad_values.append(np.linalg.norm(g, ord=np.inf))
-                except Exception:
-                    pass
 
-            try:
-                h = np.asarray(eval_eq(y_s, x_s), dtype=np.float64).reshape(-1)
-                if h.size > 0 and np.all(np.isfinite(h)):
-                    eq_values.append(np.abs(h))
-            except Exception:
-                pass
+def _append_objective_probe(evaluate, gradient, y, x, values, gradient_values):
+    """Keep only finite objective and gradient measurements."""
+    try:
+        value = float(np.asarray(evaluate(y, x)))
+        if np.isfinite(value):
+            values.append(abs(value))
+    except Exception:
+        pass
 
-            if jac_eq is not None:
-                try:
-                    Jh = np.asarray(jac_eq(y_s, x_s), dtype=np.float64)
-                    if Jh.size > 0 and np.all(np.isfinite(Jh)):
-                        eq_jac_values.append(np.max(np.abs(Jh), axis=1))
-                except Exception:
-                    pass
+    if gradient is not None:
+        try:
+            grad = np.asarray(gradient(y, x), dtype=np.float64).reshape(-1)
+            if np.all(np.isfinite(grad)):
+                gradient_values.append(np.linalg.norm(grad, ord=np.inf))
+        except Exception:
+            pass
 
-            try:
-                gval = np.asarray(eval_ineq(y_s, x_s), dtype=np.float64).reshape(-1)
-                if gval.size > 0 and np.all(np.isfinite(gval)):
-                    ineq_values.append(np.abs(gval))
-            except Exception:
-                pass
 
-            if jac_ineq is not None:
-                try:
-                    Jg = np.asarray(jac_ineq(y_s, x_s), dtype=np.float64)
-                    if Jg.size > 0 and np.all(np.isfinite(Jg)):
-                        ineq_jac_values.append(np.max(np.abs(Jg), axis=1))
-                except Exception:
-                    pass
+def _append_constraint_probe(evaluate, jacobian, y, x, values, jacobian_values):
+    """Collect the same finite residual and Jacobian magnitudes for either block."""
+    try:
+        residual = np.asarray(evaluate(y, x), dtype=np.float64).reshape(-1)
+        if residual.size > 0 and np.all(np.isfinite(residual)):
+            values.append(np.abs(residual))
+    except Exception:
+        pass
+
+    if jacobian is not None:
+        try:
+            jac = np.asarray(jacobian(y, x), dtype=np.float64)
+            if jac.size > 0 and np.all(np.isfinite(jac)):
+                jacobian_values.append(np.max(np.abs(jac), axis=1))
+        except Exception:
+            pass

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
 - Add optional structural sparse inequality products to the shared CP forward and implicit adjoint; retain dense equality operations and the existing vector diagonal proximal map. Dense behavior remains the default for library callers.
 

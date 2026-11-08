@@ -1,0 +1,100 @@
+name: CI
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  JAX_PLATFORMS: cpu
+  JAX_ENABLE_X64: 'true'
+  MPLBACKEND: Agg
+  PYTHONDONTWRITEBYTECODE: '1'
+defaults:
+  run:
+    shell: bash
+    working-directory: nlpoptnet
+jobs:
+  quality:
+    name: Ruff and source checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install ruff
+      - run: ruff format --check src tests ../.github/scripts
+      - run: ruff check --select F,E9 src tests ../.github/scripts
+      - run: python -m compileall -q src tests
+  tests:
+    name: CPU / ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        include:
+          - os: ubuntu-24.04-arm
+            python: '3.13'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install "purin @ git+https://github.com/SOULS-TAMU/Purin.git@179567dddb57e919099c78f9917dfa45445a5f39" ".[dev]"
+      - run: python -m pip check
+      - run: python ../.github/scripts/environment.py
+      - run: python -m pytest -q
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: environment-${{ matrix.os }}-${{ matrix.python }}
+          path: nlpoptnet/ci-environment.json
+  measure:
+    name: Statement and branch coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install "purin @ git+https://github.com/SOULS-TAMU/Purin.git@179567dddb57e919099c78f9917dfa45445a5f39" ".[dev]" pytest-cov
+      - run: python -m pytest -q --cov=nlpoptnet --cov-branch --cov-report=term-missing --cov-report=xml --cov-report=json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: coverage
+          path: |
+            nlpoptnet/coverage.xml
+            nlpoptnet/coverage.json
+          if-no-files-found: error
+  badge:
+    name: Publish coverage badge
+    needs: [quality, tests, measure]
+    if: github.event_name == 'push' && (github.ref_name == 'development' || github.ref_name == 'main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: coverage
+          path: coverage-input
+      - run: python ../.github/scripts/coverage_report.py ../coverage-input/coverage.json ../coverage-site
+      - uses: peaceiris/actions-gh-pages@329bcc8f12caed2cefe5a5b80781499a6f3b361b
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: ${{ github.ref_name == 'main' && 'codex/coverage-main' || 'codex/coverage-development' }}
+          publish_dir: coverage-site
+          commit_message: Update ${{ github.ref_name }} coverage
