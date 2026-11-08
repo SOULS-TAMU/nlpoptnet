@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "Please cite the software and relevant upstream research."
+title: "NLPOpt-Net"
+type: software
+authors:
+  - name: "SOULS-TAMU contributors"
+license: "Apache-2.0"
+preferred-citation:
+  type: unpublished
+  title: "NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees"
+  doi: "10.48550/arXiv.2605.00260"
+  year: 2026
+  authors:
+    - family-names: "Roy"
+      given-names: "Bimol Nath"
+    - family-names: "Golder"
+      given-names: "Rahul"
+    - family-names: "Hasan"
+      given-names: "M. M. Faruque"

@@ -1,8 +1,4 @@
-"""Public package exports for the high-level NLPOptNet API."""
+"""Nonlinear problem formulation for the shared OHAGI/PURIN workflow."""
 
-from __future__ import annotations
-
-from .api import NLPOptNet, ProblemBuilder
-
-__all__ = ["NLPOptNet", "ProblemBuilder"]
-__version__ = "0.2.0"
+from .api.root import *  # noqa: F403 - compatibility facade mirrors upstream exports
+from .api.root import __all__ as __all__, __version__ as __version__

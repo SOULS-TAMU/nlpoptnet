@@ -1,158 +1,188 @@
-# NLPOpt-Net
+# NLPOptNet
 
-**N**on**L**inear **P**arametric **Opt**imization **Net**work (NLPOpt-Net) is a GPU supported python package for learning parameters to solution mappings for nonlinear parametric optimization problem. 
+Parametric nonlinear optimization through a neural warm start and differentiable
+local projection in JAX.
 
-<figure align="center">
-  <img src="../docs/figures/framework.jpg" width="75%">
-  <figcaption>Figure 1: Overview of the NLPOpt-Net framework.</figcaption>
-</figure>
+NLPOptNet supplies the nonlinear problem, local approximations, and task policy
+to the shared **OHAGI** learning engine and **PURIN** projection library. It has
+no independent neural backbone implementation, optimizer step, epoch engine,
+CP solver, or deployment runtime.
 
-## Installation
+## Install
 
-Currently, NLPOpt-Net requires Python 3.9 or later and supports installation for both CPU-only and GPU-accelerated environments.
+From the package directory in a checkout of the development branch:
 
-- CPU-only (Linux/macOS/Windows)
-
-```bash
-pip install nlpoptnet
+```shell
+python -m pip install .
 ```
 
-- GPU (NVIDIA, CUDA 12)
+For Linux with an NVIDIA CUDA 12 GPU, use `python -m pip install ".[cuda12]"`.
 
-```bash
-pip install "nlpoptnet[cuda12]"
-```
+Python 3.10 or newer is required. Dependency availability also depends on the
+Python version and platform. The existing training backend uses Flax and Optax
+through OHAGI. Deployment through OHAGI requires neither Flax nor NLPOptNet.
 
-## Quick Overview
-
-To give a quick understanding of what we are doing, we are trying to predict a solution ($y$) of the parameterized optimization problem,
-$$
-\begin{aligned}
-\quad
-\min \quad & f(x,y) \\
-\text{s.t.} \quad & h(x,y) = 0, \\
-& g(x,y) \le 0, \\
-& l(x) \le y \le u(x),
-\end{aligned}
-$$
-
-for a given set of parameter ($x$). The core idea is to train a machine learning model in an unsupervised way and predict new solutions. For feasibility guarantee a projection layer is employed. Particularly, we approximate the original problem into a specific structure of quadratic program and solve that to retain feasibility. Graphically, the projection as training progresses would look like this:
-
-<figure align="center">
-  <img src="../docs/figures/graphical_interpretation.jpg" width="100%">
-  <figcaption>Figure 2: Graphical interpretation of the projection.</figcaption>
-</figure>
-
-For a detailed idea, we refer readers to [this article](https://paperlink.com). Complete user documentation can be found [here](https://putyourdocumentationlink.com).
-
-### Core API
-
-- `NLPOptNet(config=..., type=...)` is the user-facing entry point.
-- `model.extract(problem.npz)` loads structured matrices and exposes them as
-  model attributes like `model.Q`, `model.A`, `model.b`, and so on.
-- `model.dataset(...)`, `model.simplex(...)`, and `model.box(...)` define the
-  parameter region.
-- `model.constraints.box.add(...)` is separate from general inequalities so the
-  bound constraints stay on the dedicated projection path.
-- `model.optimize()` trains and returns a result dictionary with `output_dir`,
-  `metadata_path`, `summary`, and `history`.
-- `model.load(metadata_path)` restores a trained model, and
-  `model.predict(x_value)` returns projected variable predictions.
-
-## General Workflow
-
-The core ideas can be generalized in a workflow for training and inference tasks.
-
-### Model Creation and Training
-Following is a general pseudocode for building and running a problem with NLPOpt-Net. 
+## Define and train a problem
 
 ```python
-from nlpoptnet import NLPOptNet 
+from nlpoptnet import NLPOptNet
 
-CONFIG = {...}
-
-model = NLPOptNet(config=CONFIG, name="problem_name")
-
-x = model.add_parameter([...])
-y = model.add_variable([...])
-
-model.extract("path/to/problem_data")
-model.objective(...)
-
-model.constraints.equality.add(...)
-model.constraints.inequality.add(...)
-model.constraints.box.add(...)
-
-model.dataset(parameters="path/to/parameters.csv")
-
+model = NLPOptNet(name="example", config={
+    "epochs": 100, "batch_size": 32, "learning_rate": 1e-3,
+    "hidden_size": 64, "hidden_layers": 2,
+})
+p = model.add_parameter(["p"])
+y = model.add_variable(["u", "v"])
+model.objective((y.u - p.p)**2 + 0.5*y.v**2)
+model.constraints.equality.add(y.u + y.v == p.p)
+model.constraints.inequality.add(y.u <= 1.5)
+model.constraints.box.add(y.u >= 0, y.v >= 0, y.u <= 2, y.v <= 2)
+model.box(lower=0.4, upper=1.4, num_samples=1024)
 model.build()
 result = model.optimize()
-
-run_dir = result["output_dir"]
 ```
 
-### Load and Use a Trained Model
+The existing `NLPOptNet` and `ProblemBuilder` interfaces, configuration aliases,
+sampling options, result dictionary, and output filenames remain unchanged.
+CSV datasets, simplex/polytope sampling, matrix/vector expressions, and manual
+or automatic problem scaling remain supported.
 
-After training, a saved model can be reloaded to inspect the run summary, visualize the training history, and make new predictions.
+## Shared workflow
+
+1. Define the objective, equalities, inequalities, bounds, and parameter domain.
+2. OHAGI constructs the configured backbone, which predicts primal and dual
+   warm starts using its shared Linen MLP head construction.
+3. NLPOptNet forms the local diagonal quadratic objective and linearized
+   constraints. PURIN solves the local projection and differentiates it.
+4. NLPOptNet supplies its modified-Lagrangian/consistency loss and reporting
+   policy; OHAGI performs optimizer transitions and compiled epoch execution.
+5. OHAGI saves the shared JAX model bundle and prepares repeated inference.
+
+`cp_mode`, Ruiz equilibration, adjoint settings, and `k_layer` retain their
+existing meanings. Warm-up update behavior is preserved explicitly by the
+frontend policy. The underlying numerical operations and default initialization
+remain unchanged.
+
+## Save, load, and infer
+
+Full-model metadata is returned in `result["metadata_path"]`. Symbolic models
+can be reopened with the existing frontend API:
 
 ```python
-reloaded = NLPOptNet().load(metadata_path)
-
-reloaded.summary()
-reloaded.plot_history()
-
-sample_pred = reloaded.predict(sample_x, projection_backend="backend/type/for/prediction")
+restored = NLPOptNet().load(result["metadata_path"])
+predictions = restored.predict(parameter_batch)
 ```
 
-## Example
-
-Following is an example of the summary and history plot for a trained model.
+For deployment, export once and load using only the metadata path:
 
 ```python
-model.summary()
-```
-```text
-📊 NLPOptNet Summary
-------------------------------------------------------------
-Model Name                        : example_model
-No. of Parameters                 : 50
-No. of Variables                  : 100
-No. of Equalities                 : 50
-No. of Inequalities               : 50
-No. of Train Samples              : 1000
-No. of Validation Samples         : 1000
-Maximum Constraint Violation      : 7.5433e-11
-Training Time                     : 1518.25 s
-Est. JAX Single Inference Time    : 91.49 ms
-Est. Native Single Inference Time : 1.99 ms
-Est. JAX Batch Inference Time     : 140.02 ms
-------------------------------------------------------------
-```
-```python
-model.plot_history()
+model.export_inference("deployment/metadata.json")
+
+from ohagi.inference import load
+predictor = load("deployment/metadata.json")
+prediction = predictor(single_input)
 ```
 
-  <img src="../docs/figures/example_history.png" width="100%">
+Keep the referenced `.jax_export` file alongside `metadata.json`. Loading warms
+one JAX signature; reuse the predictor across requests. `predict_jax` returns a
+JAX array, while `predict` returns synchronized NumPy output.
 
-## Reporting a Bug or Error
+The only model format is the shared `ohagi_model_v1` JAX bundle. Its parameter
+archive uses `ohagi_pytree_npz_v1`; inference uses `ohagi_jax_inference_v1` and
+`ohagi_jax_program_v1`. Deployment loads directly through OHAGI without
+reconstructing the nonlinear problem or importing frontends, Flax, or Orbax.
+There are no legacy model readers or native export backends.
 
-We understand that running into issues can be frustrating. If you experience any errors while using NLPOpt-Net, please let us know so we can address them in future updates.
-
-When reporting a bug, it is helpful to include:
-- A brief description of the issue
-- Relevant code snippets
-- Error messages or logs
-- Steps to reproduce the problem
-
-Your feedback is greatly appreciated and helps us improve the package.
-
-<!-- ## Citation
+## Source organization
 
 ```text
-@article{bimol2026nlpoptnet,
-  title={NLPOpt-Net: A Learning Method for Nonlinear Optimization with Feasibility Guarantees},
-  author={Nath Roy, Bimol and Golder, Rahul and Hasan, MM Faruque},
-  journal={ },
-  year={2026}
-  }
-``` -->
+src/nlpoptnet/
+├── __init__.py
+├── api/
+│   ├── __init__.py
+│   ├── root.py
+│   ├── model.py
+│   ├── configuration.py
+│   ├── network.py
+│   ├── data.py
+│   ├── problem.py
+│   ├── projection.py
+│   ├── objectives.py
+│   ├── fit.py
+│   ├── predict.py
+│   ├── reporting.py
+│   ├── deployment.py
+│   └── formulation/
+│       ├── __init__.py
+│       ├── variables.py
+│       ├── parameters.py
+│       ├── expressions.py
+│       ├── constraints.py
+│       ├── bounds.py
+│       ├── builder.py
+│       ├── compiler.py
+│       ├── approximation.py
+│       └── scaling.py
+└── serialization/
+    ├── __init__.py
+    ├── definition.py
+    └── artifacts.py
+```
+
+`model.py` binds the existing public methods to small task modules.
+`formulation/` owns expression handling, variable packing, objective/residual
+evaluation, derivatives, scaling, and local subproblem construction. These are
+mathematical problem resources, not a second neural training framework.
+
+The flat API adapters supply those resources to OHAGI/PURIN. Serialization
+records the nonlinear definition and captures the prediction graph for OHAGI's
+common bundle writer. Standard Flax training state and optimizer transport are
+provided by OHAGI, rather than a package-specific training-state class.
+
+The old `optimization/`, `problems/`, empty `adapters/`, CP forwarding modules,
+and `_aliases.py` catalog are removed. Obsolete private import paths are retired;
+the benchmark-facing model interface is preserved.
+
+## Development and validation
+
+Packaging uses the `src` layout and `pyproject.toml`. See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, and
+[CITATION.cff](CITATION.cff) for citation information.
+
+See [CHANGELOG.md](CHANGELOG.md), [LICENSE](LICENSE), and [NOTICE](NOTICE) for
+changes, licensing, and attribution.
+
+## License
+
+This project is licensed under the [Apache License, Version 2.0](LICENSE).
+
+Original authorship and applicable upstream notices are retained in [NOTICE](NOTICE).
+
+## Optional sparse inequality projection
+
+Set `config["inequality_support"]` to one list of structural variable-column
+indices per inequality row before building the model. Include every entry that
+can be nonzero anywhere in the problem domain. Omitted entries are assumed to
+be structurally zero; a sparsity pattern sampled at one point is insufficient.
+
+PURIN packs those entries and uses sparse products in CP and its implicit
+adjoint. Equality matrices stay dense, and quadratic diagonals stay vectors.
+The dense path works with the published PURIN 1.0.0 wheel. To enable
+`inequality_support`, install a PURIN checkout that contains sparse
+Chambolle–Pock support. With both checkouts available locally, install them
+together from the NLPOptNet package directory.
+
+```shell
+python -m pip install /path/to/purin .
+```
+
+The option is preserved by model
+serialization; loading inference still takes only `metadata.json`.
+
+
+## Paper and experiments
+
+See the [NLPOpt-Net paper](https://arxiv.org/abs/2605.00260) and the
+[article experiments](https://github.com/SOULS-TAMU/NLPOpt-Net-Experiments).
+The existing [Read the Docs site](https://nlpoptnet.readthedocs.io/) describes the
+main-branch release. Use the training and inference examples above for this
+development branch.
