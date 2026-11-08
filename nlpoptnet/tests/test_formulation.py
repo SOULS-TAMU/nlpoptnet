@@ -105,6 +105,7 @@ def test_scaling_preserves_physical_coordinates(automatic):
             "hidden_size": 8,
             "hidden_layers": 1,
             "device": "cpu",
+            "jit_warmup": False,
         }
     )
     p = model.add_parameter("p")
