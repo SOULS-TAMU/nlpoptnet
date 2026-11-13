@@ -63,6 +63,20 @@ def test_training_and_metadata_roundtrip(tmp_path, monkeypatch, capsys, storage)
     model.plot_history(show=False)
     restored = NLPOptNet().load(result["metadata_path"])
     np.testing.assert_allclose(restored.predict(batch), expected, rtol=1e-8, atol=1e-9)
+    info = restored.predict_with_info(batch)
+    np.testing.assert_allclose(info["prediction"], expected, rtol=1e-8, atol=1e-9)
+    assert np.all(info["layers_used"] == restored._inference_state.cfg.k_layer)
+    assert info["cp_iterations"].shape == (2, restored._inference_state.cfg.k_layer)
+    assert np.all(info["cp_iterations"] <= 100)
+    adaptive = restored.predict_with_info(batch[0], adaptive=True, max_layers=4)
+    assert adaptive["primal_feasible"]
+    assert adaptive["layers_used"] == 1
+    assert adaptive["cp_iterations"].shape == (1,)
+    assert adaptive["prediction"].shape == (2,)
+    with pytest.raises(ValueError, match="max_layers"):
+        restored.predict_with_info(batch, max_layers=2)
+    with pytest.raises(ValueError, match="tolerances"):
+        restored.predict_with_info(batch, stationarity_tolerance=-1.0)
     metadata = tmp_path / "deployment" / "metadata.json"
     model.export_inference(metadata)
     predictor = load(metadata)

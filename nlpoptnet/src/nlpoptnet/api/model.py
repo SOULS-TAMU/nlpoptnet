@@ -19,6 +19,7 @@ import nlpoptnet.api.formulation.builder as _m4
 import nlpoptnet.api.formulation.expressions as _m5
 import nlpoptnet.api.formulation.scaling as _m6
 import nlpoptnet.api.predict as _m7
+from nlpoptnet.api.inference_diagnostics import predict_with_info
 import nlpoptnet.api.problem as _m8
 import nlpoptnet.api.reporting as _m9
 import nlpoptnet.serialization.definition as _m10
@@ -84,6 +85,7 @@ class NLPOptNet:
     build = _m8.build
     optimize = _m3.optimize
     predict = _m7.predict
+    predict_with_info = predict_with_info
     _project_with_state = _m7._project_with_state
     export_inference = _m2.export_inference
     load_inference = staticmethod(_m2.load_inference)

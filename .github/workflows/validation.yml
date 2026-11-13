@@ -32,7 +32,7 @@ jobs:
       - run: python -m pip install build twine pytest
       - run: python -m build
       - run: python -m twine check --strict dist/*
-      - run: python -m pip install "purin @ git+https://github.com/SOULS-TAMU/Purin.git@179567dddb57e919099c78f9917dfa45445a5f39" dist/*.whl
+      - run: python -m pip install "purin @ git+https://github.com/SOULS-TAMU/Purin.git@7f27a576ff56675c61a4403b613977072046b914" dist/*.whl
       - run: python -m pip check
       - run: python -m pytest -q tests/test_workflow.py
   structure:

@@ -48,6 +48,7 @@ def solve_cp_implicit(
     y0: Optional[Array] = None,
     lam0: Optional[Array] = None,
     mu0: Optional[Array] = None,
+    return_iterations: bool = False,
 ):
     """Map NLPOPTNet configuration to PURIN's shared implicit CP solver.
 
@@ -65,6 +66,7 @@ def solve_cp_implicit(
         y0: Optional primal warm start.
         lam0: Optional equality-multiplier warm start.
         mu0: Optional inequality-multiplier warm start.
+        return_iterations: Request PURIN iteration counts for inference.
 
     Returns:
         PURIN's tuple of primal, equality-multiplier and inequality-multiplier
@@ -77,6 +79,8 @@ def solve_cp_implicit(
     sparse_options = {}
     if getattr(cfg, "inequality_support", None) is not None:
         sparse_options["inequality_support"] = cfg.inequality_support
+    if return_iterations:
+        sparse_options["return_iterations"] = True
     return solve_dense_implicit(
         Q_diag,
         c,

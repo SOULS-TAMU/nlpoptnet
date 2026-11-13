@@ -88,6 +88,23 @@ restored = NLPOptNet().load(result["metadata_path"])
 predictions = restored.predict(parameter_batch)
 ```
 
+Use the loaded model to inspect original-problem KKT residuals at inference:
+
+```python
+info = restored.predict_with_info(
+    parameter_batch, adaptive=True, max_layers=10, primal_tolerance=1e-6
+)
+print(info["primal_feasible"], info["kkt_satisfied"], info["layers_used"])
+print(info["residuals"], info["cp_iterations"])
+```
+
+Pass a single parameter vector or a batch as the first argument. Adaptive depth
+stops each sample on primal feasibility and can compile new JAX batch shapes
+as samples finish. The KKT check also tests dual feasibility, complementarity
+and stationarity in original problem units. Use PURIN from its GitHub main
+branch for CP iteration counts. With PURIN 1.0.1, that field returns `None`.
+Regular prediction and training use fixed depth.
+
 For deployment, export once and load using only the metadata path:
 
 ```python
