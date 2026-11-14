@@ -6,17 +6,17 @@ local projection in JAX.
 [![PyPI](https://img.shields.io/pypi/v/nlpoptnet)](https://pypi.org/project/nlpoptnet/)
 [![Documentation](https://img.shields.io/readthedocs/nlpoptnet/latest?logo=readthedocs&label=docs)](https://nlpoptnet.readthedocs.io/)
 
-[![CI](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/ci.yml/badge.svg?branch=development)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/ci.yml?query=branch%3Adevelopment)
-[![Validation](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/validation.yml/badge.svg?branch=development)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/validation.yml?query=branch%3Adevelopment)
-[![CodeQL](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/codeql.yml/badge.svg?branch=development)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/codeql.yml?query=branch%3Adevelopment)
-[![Dependency review](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/dependency-review.yml/badge.svg?branch=development)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/dependency-review.yml?query=branch%3Adevelopment)
-[![Coverage](https://raw.githubusercontent.com/SOULS-TAMU/nlpoptnet/codex/coverage-development/coverage.svg)](https://github.com/SOULS-TAMU/nlpoptnet/tree/codex/coverage-development)
+[![CI](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/ci.yml?query=branch%3Amain)
+[![Validation](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/validation.yml?query=branch%3Amain)
+[![CodeQL](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/codeql.yml?query=branch%3Amain)
+[![Dependency review](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/dependency-review.yml/badge.svg?branch=main)](https://github.com/SOULS-TAMU/nlpoptnet/actions/workflows/dependency-review.yml?query=branch%3Amain)
+[![Coverage](https://raw.githubusercontent.com/SOULS-TAMU/nlpoptnet/codex/coverage-main/coverage.svg)](https://github.com/SOULS-TAMU/nlpoptnet/tree/codex/coverage-main)
 
-[![Python versions](https://img.shields.io/badge/Python-3.10%E2%80%933.14-3776AB?logo=python&logoColor=white)](https://github.com/SOULS-TAMU/nlpoptnet/blob/development/.github/workflows/ci.yml)
-[![CPU platforms](https://img.shields.io/badge/CPU-Linux%20%7C%20Windows%20%7C%20macOS-555555)](https://github.com/SOULS-TAMU/nlpoptnet/blob/development/.github/workflows/ci.yml)
+[![Python versions](https://img.shields.io/badge/Python-3.10%E2%80%933.14-3776AB?logo=python&logoColor=white)](https://github.com/SOULS-TAMU/nlpoptnet/blob/main/.github/workflows/ci.yml)
+[![CPU platforms](https://img.shields.io/badge/CPU-Linux%20%7C%20Windows%20%7C%20macOS-555555)](https://github.com/SOULS-TAMU/nlpoptnet/blob/main/.github/workflows/ci.yml)
 [![JAX](https://img.shields.io/badge/Powered_by-JAX-8A2BE2)](https://docs.jax.dev/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue)](https://github.com/SOULS-TAMU/nlpoptnet/blob/development/LICENSE)
-[![Citation: BibTeX](https://img.shields.io/badge/Cite-BibTeX-6F4E37)](https://github.com/SOULS-TAMU/nlpoptnet/blob/development/CITATION.bib)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue)](https://github.com/SOULS-TAMU/nlpoptnet/blob/main/LICENSE)
+[![Citation: BibTeX](https://img.shields.io/badge/Cite-BibTeX-6F4E37)](https://github.com/SOULS-TAMU/nlpoptnet/blob/main/CITATION.bib)
 
 
 NLPOptNet supplies the nonlinear problem, local approximations, and task policy
@@ -199,7 +199,7 @@ be structurally zero; a sparsity pattern sampled at one point is insufficient.
 
 PURIN packs those entries and uses sparse products in CP and its implicit
 adjoint. Equality matrices stay dense, and quadratic diagonals stay vectors.
-NLPOptNet 2.0 uses PURIN 1.0.1 or newer for both paths. Omit this option to retain dense behavior. The option is preserved by model
+NLPOptNet 2.0 uses PURIN 1.0.2 or newer for both paths. Omit this option to retain dense behavior. The option is preserved by model
 serialization; loading inference still takes only `metadata.json`.
 
 
@@ -207,6 +207,4 @@ serialization; loading inference still takes only `metadata.json`.
 
 See the [NLPOpt-Net paper](https://arxiv.org/abs/2605.00260) and the
 [article experiments](https://github.com/SOULS-TAMU/NLPOpt-Net-Experiments).
-The existing [Read the Docs site](https://nlpoptnet.readthedocs.io/) describes the
-main-branch release. Use the training and inference examples above for this
-development branch.
+See the [Read the Docs site](https://nlpoptnet.readthedocs.io/) for additional documentation.
