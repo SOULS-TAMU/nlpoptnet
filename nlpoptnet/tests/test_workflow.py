@@ -8,7 +8,6 @@ import pytest
 
 from nlpoptnet import NLPOptNet, __version__
 from nlpoptnet.api.configuration import cfg_from_dict
-from ohagi.inference import load
 
 
 jax.config.update("jax_enable_x64", True)
@@ -43,14 +42,15 @@ def define_qp(model):
 def test_training_and_metadata_roundtrip(tmp_path, monkeypatch, capsys, storage):
     monkeypatch.chdir(tmp_path)
     options = {"inequality_support": [[0]]} if storage == "sparse" else {}
-    model = define_qp(make_model(**options))
+    model = define_qp(make_model(**options, verbose=storage == "dense"))
     if storage == "dense":
         values = np.linspace(0.4, 1.4, 48)
         np.savetxt(tmp_path / "samples.csv", values, delimiter=",")
         model.dataset(parameters=tmp_path / "samples.csv")
     else:
         model.box(lower=0.4, upper=1.4, num_samples=48)
-    model.build()
+        model.scale(parameter=2, variable=2, objective=4, equality=2, inequality=2)
+        model.build()
     result = model.optimize()
     assert len(result["history"]) == 1
     batch = np.array([[0.8], [0.6]])
@@ -61,7 +61,7 @@ def test_training_and_metadata_roundtrip(tmp_path, monkeypatch, capsys, storage)
     model.summary()
     assert "Training Summary" in capsys.readouterr().out
     model.plot_history(show=False)
-    restored = NLPOptNet().load(result["metadata_path"])
+    restored = NLPOptNet().load(result["metadata_path"], verbose=storage == "dense")
     np.testing.assert_allclose(restored.predict(batch), expected, rtol=1e-8, atol=1e-9)
     info = restored.predict_with_info(batch)
     np.testing.assert_allclose(info["prediction"], expected, rtol=1e-8, atol=1e-9)
@@ -74,12 +74,14 @@ def test_training_and_metadata_roundtrip(tmp_path, monkeypatch, capsys, storage)
     assert adaptive["cp_iterations"].shape == (1,)
     assert adaptive["prediction"].shape == (2,)
     with pytest.raises(ValueError, match="max_layers"):
+        restored.predict_with_info(batch, adaptive=True, max_layers=0)
+    with pytest.raises(ValueError, match="max_layers"):
         restored.predict_with_info(batch, max_layers=2)
     with pytest.raises(ValueError, match="tolerances"):
         restored.predict_with_info(batch, stationarity_tolerance=-1.0)
     metadata = tmp_path / "deployment" / "metadata.json"
     model.export_inference(metadata)
-    predictor = load(metadata)
+    predictor = model.load_inference(metadata)
     for sample in batch:
         # Compare the same batch shape because finite CP norm estimates may
         # depend on batching.

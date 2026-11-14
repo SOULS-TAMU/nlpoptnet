@@ -58,4 +58,4 @@ source = ["nlpoptnet"]
 show_missing = true
 precision = 1
 include_namespace_packages = true
-fail_under = 60
+fail_under = 90.1
