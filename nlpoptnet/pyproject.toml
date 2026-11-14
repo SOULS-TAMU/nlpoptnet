@@ -8,7 +8,7 @@ version = "2.0.0"
 description = "NLPOptNet frontend on shared OHAGI components"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["ohagi[flax,optax,plotting,export]>=1.0.0,<2.0.0", "purin>=1.0.1,<2.0.0"]
+dependencies = ["ohagi[flax,optax,plotting,export]>=1.0.0,<2.0.0", "purin>=1.0.2,<2.0.0"]
 
 license = "Apache-2.0"
 license-files = ["LICENSE*", "NOTICE"]

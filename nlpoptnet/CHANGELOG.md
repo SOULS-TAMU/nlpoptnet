@@ -2,6 +2,10 @@
 
 ## 2.0.0
 
+- Add optional original-problem KKT diagnostics and adaptive projection depth during inference.
+- Report actual Chambolle–Pock iterations with PURIN 1.0.2 or later.
+- Expand CPU tests for formulation, scaling, artifact reload and reporting.
+
 - Add optional structural sparse inequality products to the shared CP forward and implicit adjoint; retain dense equality operations and the existing vector diagonal proximal map. Dense behavior remains the default for library callers.
 
 - Use the renamed `ohagi` and `purin` dependencies without changing frontend APIs.

@@ -26,13 +26,14 @@ CP solver, or deployment runtime.
 
 ## Install
 
-From the package directory in a checkout of the development branch:
+Install or upgrade NLPOptNet and its dependencies from PyPI.
 
 ```shell
-python -m pip install .
+python -m pip install --upgrade nlpoptnet
 ```
 
-For Linux with an NVIDIA CUDA 12 GPU, use `python -m pip install ".[cuda12]"`.
+On Linux with an NVIDIA CUDA 12 GPU, use `python -m pip install "nlpoptnet[cuda12]"`.
+From a source checkout, run `python -m pip install .`.
 
 CPU CI targets Python 3.10–3.14 on Linux, Windows and macOS. Python 3.15 is pending compatible wheels for the Flax dependency chain. The existing training backend uses Flax and Optax
 through OHAGI. Deployment through OHAGI requires neither Flax nor NLPOptNet.
